@@ -1,0 +1,5 @@
+# Permitir acesso direto aos arquivos PHP na pasta api
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^api/ - [L]
+</IfModule> 

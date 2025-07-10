@@ -1,0 +1,278 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\LegalCase;
+use App\Models\User;
+use Illuminate\Http\Request;
+use Inertia\Inertia;
+use Illuminate\Support\Facades\DB;
+
+class CaseController extends Controller
+{
+    public function index(Request $request)
+    {
+        try {
+            $user = auth()->user();
+            $companyId = $user->company_id ?? 1;
+            
+            $cases = LegalCase::where('company_id', $companyId)
+                ->orderBy('created_at', 'desc')
+                ->paginate(15);
+            
+            $users = User::select('id', 'name')->get();
+            $statuses = [
+                'pendente' => 'Pendente',
+                'em_coleta' => 'Em Coleta',
+                'concluido' => 'Concluído',
+            ];
+
+            return Inertia::render('Cases/Index', [
+                'cases' => $cases,
+                'users' => $users,
+                'statuses' => $statuses,
+                'filters' => [],
+            ]);
+            
+        } catch (\Exception $e) {
+            return response('Erro: ' . $e->getMessage(), 500);
+        }
+    }
+
+    public function create()
+    {
+        $benefitTypes = [
+            'aposentadoria_por_idade' => 'Aposentadoria por Idade',
+            'auxilio_doenca' => 'Auxílio-Doença',
+            'outro' => 'Outro',
+        ];
+
+        return Inertia::render('Cases/Create', [
+            'benefitTypes' => $benefitTypes,
+        ]);
+    }
+
+    public function store(Request $request)
+    {
+        try {
+            $validated = $request->validate([
+                'client_name' => 'required|string|max:255',
+                'client_cpf' => 'required|string|max:14',
+                'benefit_type' => 'nullable|string',
+                'notes' => 'nullable|string',
+            ]);
+
+            $caseNumber = $this->generateCaseNumber();
+
+            $case = LegalCase::create([
+                'case_number' => $caseNumber,
+                'client_name' => $validated['client_name'],
+                'client_cpf' => $validated['client_cpf'],
+                'benefit_type' => $validated['benefit_type'] ?? null,
+                'notes' => $validated['notes'] ?? null,
+                'status' => 'pendente',
+                'created_by' => auth()->id(),
+                'company_id' => auth()->user()->company_id ?? 1,
+            ]);
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'case' => $case,
+                ]);
+            }
+
+            return redirect()->route('cases.index')
+                ->with('success', 'Caso criado com sucesso!');
+
+        } catch (\Exception $e) {
+            if ($request->expectsJson()) {
+                return response()->json(['error' => $e->getMessage()], 500);
+            }
+            return back()->withErrors(['error' => $e->getMessage()])->withInput();
+        }
+    }
+
+    public function show(LegalCase $case)
+    {
+        try {
+            $users = User::select('id', 'name')->get();
+            $benefitTypes = [
+                'aposentadoria_por_idade' => 'Aposentadoria por Idade',
+                'auxilio_doenca' => 'Auxílio-Doença',
+            ];
+
+            return Inertia::render('Cases/Show', [
+                'case' => $case,
+                'users' => $users,
+                'benefitTypes' => $benefitTypes,
+            ]);
+        } catch (\Exception $e) {
+            return response('Erro: ' . $e->getMessage(), 500);
+        }
+    }
+
+    public function edit(LegalCase $case)
+    {
+        $users = User::select('id', 'name')->get();
+        $benefitTypes = [
+            'aposentadoria_por_idade' => 'Aposentadoria por Idade',
+            'auxilio_doenca' => 'Auxílio-Doença',
+        ];
+
+        return Inertia::render('Cases/Edit', [
+            'case' => $case,
+            'users' => $users,
+            'benefitTypes' => $benefitTypes,
+        ]);
+    }
+
+    public function update(Request $request, LegalCase $case)
+    {
+        try {
+            $validated = $request->validate([
+                'client_name' => 'string|max:255',
+                'client_cpf' => 'string|max:14',
+                'benefit_type' => 'nullable|string',
+                'status' => 'string',
+                'notes' => 'nullable|string',
+            ]);
+
+            $case->update($validated);
+
+            return redirect()->route('cases.show', $case)
+                ->with('success', 'Caso atualizado!');
+        } catch (\Exception $e) {
+            return back()->withErrors(['error' => $e->getMessage()]);
+        }
+    }
+
+    public function destroy(LegalCase $case)
+    {
+        $case->delete();
+        return redirect()->route('cases.index')
+            ->with('success', 'Caso excluído!');
+    }
+
+    public function dashboard()
+    {
+        try {
+            $user = auth()->user();
+            
+            if (!$user) {
+                return redirect()->route('login');
+            }
+            
+            $companyId = $user->company_id ?? 1;
+            
+            // Stats MUITO simples
+            $totalCases = LegalCase::where('company_id', $companyId)->count();
+            $pendentes = LegalCase::where('company_id', $companyId)
+                ->where('status', 'pendente')
+                ->count();
+            
+            $recentCases = LegalCase::where('company_id', $companyId)
+                ->select('id', 'case_number', 'client_name', 'status', 'created_at')
+                ->orderBy('created_at', 'desc')
+                ->limit(5)
+                ->get();
+            
+            return Inertia::render('dashboard', [
+                'isSuperAdmin' => false,
+                'stats' => [
+                    'total_cases' => $totalCases,
+                    'pendente' => $pendentes,
+                    'em_coleta' => 0,
+                    'concluido' => 0,
+                ],
+                'recentCases' => $recentCases->toArray(),
+                'casesByStatus' => [],
+                'casesByMonth' => [],
+            ]);
+            
+        } catch (\Exception $e) {
+            // Dashboard de emergência
+            return Inertia::render('dashboard', [
+                'isSuperAdmin' => false,
+                'stats' => [
+                    'total_cases' => 0,
+                    'pendente' => 0,
+                    'em_coleta' => 0,
+                    'concluido' => 0,
+                ],
+                'recentCases' => [],
+                'error' => 'Dashboard em modo de emergência. Erro: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    public function coletas(Request $request)
+    {
+        try {
+            $companyId = auth()->user()->company_id ?? 1;
+            
+            return Inertia::render('Coletas', [
+                'cards' => [
+                    'totalVinculos' => 0,
+                    'clientesAtivos' => 0,
+                    'clientesFinalizados' => 0,
+                ],
+                'tab' => 'clientes',
+                'search' => '',
+                'resultados' => [],
+            ]);
+        } catch (\Exception $e) {
+            return response('Erro em coletas: ' . $e->getMessage(), 500);
+        }
+    }
+
+    private function generateCaseNumber(): string
+    {
+        try {
+            $year = date('Y');
+            $prefix = "CASE-{$year}-";
+            
+            $lastCase = LegalCase::where('case_number', 'like', $prefix . '%')
+                ->orderBy('case_number', 'desc')
+                ->first();
+
+            $newNumber = 1;
+            if ($lastCase) {
+                $lastNum = (int) str_replace($prefix, '', $lastCase->case_number);
+                $newNumber = $lastNum + 1;
+            }
+
+            return $prefix . str_pad($newNumber, 4, '0', STR_PAD_LEFT);
+            
+        } catch (\Exception $e) {
+            // Fallback
+            return 'CASE-' . date('Y') . '-' . str_pad(rand(1, 9999), 4, '0', STR_PAD_LEFT);
+        }
+    }
+
+    private function parseDate($dateString): ?string
+    {
+        if (empty($dateString) || $dateString === 'sem data fim') {
+            return null;
+        }
+        
+        if (preg_match('/^\d{2}\/\d{2}\/\d{4}$/', $dateString)) {
+            $date = \DateTime::createFromFormat('d/m/Y', $dateString);
+            return $date ? $date->format('Y-m-d') : null;
+        }
+        
+        return null;
+    }
+
+    private function parseSalary($salaryString): ?float
+    {
+        if (empty($salaryString)) {
+            return null;
+        }
+        
+        $cleanSalary = preg_replace('/[^\d,.]/', '', $salaryString);
+        $cleanSalary = str_replace(',', '.', $cleanSalary);
+        
+        return (float) $cleanSalary;
+    }
+}
