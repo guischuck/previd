@@ -60,13 +60,11 @@ class AndamentoController extends Controller
             }
             
             // Filtro de visualização (visto/não visto)
-            if ($request->filled('visualizacao')) {
-                $visualizacao = $request->get('visualizacao');
-                if ($visualizacao === 'visto') {
-                    $query->where('visto', true);
-                } elseif ($visualizacao === 'nao_visto') {
-                    $query->where('visto', false);
-                }
+            $visualizacao = $request->get('visualizacao', 'nao_visto'); // Padrão para não vistos
+            if ($visualizacao === 'visto') {
+                $query->where('visto', true);
+            } elseif ($visualizacao === 'nao_visto') {
+                $query->where('visto', false);
             }
             
             // Filtro de período

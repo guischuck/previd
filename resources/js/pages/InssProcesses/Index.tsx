@@ -255,7 +255,6 @@ export default function InssProcessesIndex({ processos, stats, statusOptions, se
                         </CardHeader>
                         <CardContent>
                             <div className="text-lg md:text-2xl font-bold">{stats?.protocolados_hoje || 0}</div>
-                            <p className="text-xs text-muted-foreground mt-1">Ver todos ➜</p>
                         </CardContent>
                     </Card>
                 </div>

@@ -117,7 +117,7 @@ export default function AndamentosIndex({
     const [searchTerm, setSearchTerm] = useState(filters.search || '');
     const [selectedNovaSituacao, setSelectedNovaSituacao] = useState(filters.nova_situacao || 'all');
     const [selectedSituacaoAnterior, setSelectedSituacaoAnterior] = useState(filters.situacao_anterior || 'all');
-    const [selectedVisualizacao, setSelectedVisualizacao] = useState(filters.visualizacao || 'all');
+    const [selectedVisualizacao, setSelectedVisualizacao] = useState(filters.visualizacao || 'nao_visto');
     const [selectedPeriodo, setSelectedPeriodo] = useState(filters.periodo || 'all');
     const [selectedAndamento, setSelectedAndamento] = useState<any>(null);
     const [isAdvboxModalOpen, setIsAdvboxModalOpen] = useState(false);
@@ -509,9 +509,10 @@ export default function AndamentosIndex({
                                             <tr 
                                                 key={andamento.id} 
                                                 className={cn(
-                                                    "border-b hover:bg-muted/30 transition-colors",
+                                                    "border-b hover:bg-muted/30 transition-colors cursor-pointer",
                                                     !andamento.visto && "border-l-4 border-l-red-500 bg-muted/20 dark:bg-muted/10"
                                                 )}
+                                                onClick={() => handleVerDespacho(andamento)}
                                             >
                                                 <td className="p-4">
                                                     <div className="flex items-center gap-2">
@@ -563,14 +564,14 @@ export default function AndamentosIndex({
                                                     <div className="flex gap-2 justify-center">
                                                         {!andamento.visto && (
                                                             <Button
-                                                                onClick={() => markAsViewed(andamento.id)}
-                                                                size="sm"
-                                                                variant="outline"
-                                                                className="h-8 w-8 p-0"
-                                                                title="Marcar como visto"
-                                                            >
-                                                                <CheckCircle className="h-4 w-4 text-green-600" />
-                                                            </Button>
+    onClick={e => { e.stopPropagation(); markAsViewed(andamento.id); }}
+    size="sm"
+    variant="outline"
+    className="h-8 w-8 p-0"
+    title="Marcar como visto"
+>
+    <CheckCircle className="h-4 w-4 text-green-600" />
+</Button>
                                                         )}
                                                         <Button
                                                             asChild
@@ -842,28 +843,28 @@ export default function AndamentosIndex({
                             <div className="flex justify-end gap-2">
                                 {/* Botão Marcar como Visto */}
                                 {selectedAndamento && !selectedAndamento.visto && (
-                                    <Button
-                                        variant="outline"
-                                        onClick={() => {
-                                            markAsViewed(selectedAndamento.id);
-                                            setIsDespachoModalOpen(false);
-                                        }}
-                                        className="h-8 w-8 p-0"
-                                        title="Marcar como Visto"
-                                    >
-                                        <CheckCircle className="h-4 w-4 text-green-600" />
-                                    </Button>
-                                )}
+    <Button
+        variant="outline"
+        onClick={() => {
+            markAsViewed(selectedAndamento.id);
+            setIsDespachoModalOpen(false);
+        }}
+        className="h-8 w-8 p-0"
+        title="Marcar como Visto"
+    >
+        <CheckCircle className="h-4 w-4 text-green-600" />
+    </Button>
+)}
 
                                 {/* Botão Ver no INSS */}
                                 <Button
-                                    variant="outline"
-                                    onClick={() => handleVerNoInss(despachoData.protocolo)}
-                                    className="h-8 w-8 p-0"
-                                    title="Ver no INSS"
-                                >
-                                    <ExternalLink className="h-4 w-4 text-blue-600" />
-                                </Button>
+    variant="outline"
+    onClick={() => handleVerNoInss(despachoData.protocolo)}
+    className="h-8 w-8 p-0"
+    title="Ver no INSS"
+>
+    <ExternalLink className="h-4 w-4 text-blue-600" />
+</Button>
 
                                 {/* Botão Importar para Advbox */}
                                 {selectedAndamento && (

@@ -47,9 +47,13 @@ interface CasesIndexProps {
 }
 
 export default function CasesIndex({ cases, users, statuses, filters }: CasesIndexProps) {
+    // Atualiza casesData sempre que cases.data mudar (ex: após busca)
+    useEffect(() => {
+        setCasesData(cases.data);
+    }, [cases.data]);
     const [searchTerm, setSearchTerm] = useState(filters.search || '');
     const [casesData, setCasesData] = useState(cases.data);
-    const [viewMode, setViewMode] = useState<'list' | 'kanban'>('list');
+    const [viewMode, setViewMode] = useState<'list' | 'kanban'>('kanban');
 
     // Listener para atualizações de progresso em tempo real
     useEffect(() => {
@@ -129,16 +133,18 @@ export default function CasesIndex({ cases, users, statuses, filters }: CasesInd
 
     // Organizar casos por status para o Kanban
     const getCasesByStatus = () => {
+        // Apenas colunas até 'concluido'
         const statusColumns = {
             pendente: { title: 'Pendente', cases: [] as Case[] },
             em_coleta: { title: 'Em Coleta', cases: [] as Case[] },
             aguarda_peticao: { title: 'Aguarda Petição', cases: [] as Case[] },
             protocolado: { title: 'Protocolado', cases: [] as Case[] },
-            concluido: { title: 'Concluído', cases: [] as Case[] },
-            arquivado: { title: 'Arquivado', cases: [] as Case[] },
+            concluido: { title: 'Concluído', cases: [] as Case[] }
         };
 
         casesData.forEach(case_ => {
+            // Não exibir arquivados em nenhuma visualização
+            if (case_.status === 'arquivado') return;
             if (statusColumns[case_.status as keyof typeof statusColumns]) {
                 statusColumns[case_.status as keyof typeof statusColumns].cases.push(case_);
             } else {
@@ -187,6 +193,15 @@ export default function CasesIndex({ cases, users, statuses, filters }: CasesInd
                             <Button onClick={handleSearch} variant="outline">
                                 Buscar
                             </Button>
+                            <Button
+                                variant="ghost"
+                                onClick={() => {
+                                    setSearchTerm('');
+                                    router.get('/cases', {}, { preserveState: true });
+                                }}
+                            >
+                                Limpar busca
+                            </Button>
                         </div>
                     </CardContent>
                 </Card>
@@ -226,7 +241,7 @@ export default function CasesIndex({ cases, users, statuses, filters }: CasesInd
                 </Card>
 
                 {/* Cases Content */}
-                {casesData && casesData.length > 0 ? (
+                {casesData && casesData.filter(c => c.status !== 'arquivado').length > 0 ? (
                     viewMode === 'list' ? (
                         /* List View */
                         <Card>
@@ -236,7 +251,7 @@ export default function CasesIndex({ cases, users, statuses, filters }: CasesInd
                             </CardHeader>
                             <CardContent>
                                 <div className="space-y-4">
-                                    {casesData.map((case_) => (
+                                    {casesData.filter(c => c.status !== 'arquivado').map((case_) => (
                                         <div
                                             key={case_.id}
                                             className="flex items-center justify-between rounded-lg border p-4 transition-colors hover:bg-accent hover:text-accent-foreground"
@@ -284,7 +299,7 @@ export default function CasesIndex({ cases, users, statuses, filters }: CasesInd
                     ) : (
                         /* Kanban View */
                         <div className="space-y-6">
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
                                 {Object.entries(statusColumns).map(([statusKey, column]) => (
                                     <div key={statusKey} className="space-y-4">
                                         <div className="flex items-center justify-between">

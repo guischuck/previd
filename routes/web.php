@@ -131,10 +131,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
         
         // Rota para salvar anotações
         Route::patch('/cases/{case}/notes', [CaseController::class, 'updateNotes'])->name('api.cases.update-notes');
-        
-        // Rota para buscar tarefas do caso
-        Route::get('/cases/{case}/tasks', [CaseController::class, 'getCaseTasks'])->name('api.cases.tasks');
     });
+    
+    // Rota para buscar tarefas do caso
+    Route::get('/cases/{case}/tasks', [CaseController::class, 'getCaseTasks'])
+        ->middleware('auth')
+        ->name('cases.tasks');
 
     // Petitions routes
     Route::resource('petitions', PetitionController::class);

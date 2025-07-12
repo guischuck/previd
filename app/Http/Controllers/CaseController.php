@@ -221,19 +221,43 @@ class CaseController extends Controller
 
     public function update(Request $request, LegalCase $case)
     {
+        // Log detalhado da requisição
         \Log::info('CaseController@update called', [
             'method' => $request->method(),
             'url' => $request->url(),
             'path' => $request->path(),
             'case_id' => $case->id,
             'request_data' => $request->all(),
-            'status_value' => $request->input('status'),
-            'status_type' => gettype($request->input('status')),
-            'headers' => $request->headers->all()
+            'benefit_type_in_request' => $request->input('benefit_type'),
+            'benefit_type_in_case' => $case->benefit_type,
+            'content_type' => $request->header('Content-Type'),
+            'is_json' => $request->isJson(),
+            'all_input' => $request->all(),
+            'input_has_benefit_type' => $request->has('benefit_type'),
+            'input_benefit_type' => $request->input('benefit_type')
+        ]);
+        
+        // Log do conteúdo bruto da requisição
+        $rawContent = $request->getContent();
+        \Log::info('Raw request content:', [
+            'content' => $rawContent,
+            'content_length' => strlen($rawContent)
         ]);
 
         // Para atualizações parciais, validar apenas os campos enviados
         $validationRules = [];
+        
+        // Log de todos os inputs recebidos
+        $allInputs = $request->all();
+        \Log::info('All request inputs:', $allInputs);
+        \Log::info('Request has benefit_type (has):', ['has' => $request->has('benefit_type')]);
+        \Log::info('Request benefit_type value (input):', ['value' => $request->input('benefit_type')]);
+        \Log::info('Request benefit_type (all()):', ['value' => $request->all('benefit_type')]);
+        \Log::info('Request headers:', ['headers' => $request->headers->all()]);
+        
+        // Obter tipos de benefício disponíveis
+        $availableBenefitTypes = $this->getAvailableBenefitTypes();
+        \Log::info('Available benefit types:', $availableBenefitTypes);
         
         if ($request->has('client_name')) {
             $validationRules['client_name'] = 'required|string|max:255';
@@ -243,8 +267,35 @@ class CaseController extends Controller
             $validationRules['client_cpf'] = 'required|string|max:14';
         }
         
+        // Sempre tenta validar o benefit_type se estiver presente na requisição
         if ($request->has('benefit_type')) {
-            $validationRules['benefit_type'] = 'nullable|string';
+            $benefitType = $request->input('benefit_type');
+            \Log::info('Processing benefit_type:', [
+                'input_value' => $benefitType,
+                'is_string' => is_string($benefitType),
+                'in_available_types' => in_array($benefitType, array_keys($availableBenefitTypes)),
+                'available_types' => array_keys($availableBenefitTypes)
+            ]);
+            
+            // Se o benefit_type estiver vazio, define como null
+            if ($benefitType === '') {
+                $benefitType = null;
+                $request->merge(['benefit_type' => null]);
+            }
+            
+            // Se não for nulo, valida de acordo com os tipos disponíveis
+            if ($benefitType !== null) {
+                $validationRules['benefit_type'] = [
+                    'required',
+                    'string',
+                    'in:' . implode(',', array_keys($availableBenefitTypes))
+                ];
+            } else {
+                // Permite null
+                $validationRules['benefit_type'] = 'nullable';
+            }
+            
+            \Log::info('Benefit type validation rule added:', ['rule' => $validationRules['benefit_type']]);
         }
         
         if ($request->has('status')) {
@@ -260,23 +311,46 @@ class CaseController extends Controller
             $validationRules['notes'] = 'nullable|string';
         }
 
-        \Log::info('Validation rules:', $validationRules);
+        \Log::info('Validation rules before validation:', $validationRules);
 
-        $validated = $request->validate($validationRules);
-
-        \Log::info('Validated data:', $validated);
+        try {
+            $validated = $request->validate($validationRules);
+            \Log::info('Validation passed. Validated data:', $validated);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            \Log::error('Validation failed:', [
+                'errors' => $e->errors(),
+                'input' => $request->all()
+            ]);
+            throw $e;
+        }
 
         // Verificar se o benefit_type está sendo alterado e criar workflow se necessário
         $oldBenefitType = $case->benefit_type;
         $newBenefitType = $validated['benefit_type'] ?? $oldBenefitType;
         
+        // Se o novo tipo de benefício for vazio, define como null
+        if ($newBenefitType === '') {
+            $newBenefitType = null;
+            $validated['benefit_type'] = null;
+        }
+        
+        \Log::info('Benefit type update check:', [
+            'old_benefit_type' => $oldBenefitType,
+            'new_benefit_type' => $newBenefitType,
+            'is_different' => $newBenefitType !== $oldBenefitType,
+            'validated_data' => $validated
+        ]);
+        
+        // Atualizar o caso primeiro para garantir que o benefit_type seja salvo
+        $case->update($validated);
+        
         // Verificar se há tarefas de workflow existentes para este caso
         $existingWorkflowTasks = $case->tasks()->where('is_workflow_task', true)->count();
         
         // Criar workflow se:
-        // 1. O tipo de benefício mudou, OU
-        // 2. Um tipo está sendo definido e não há tarefas de workflow existentes
-        if ($newBenefitType && ($newBenefitType !== $oldBenefitType || $existingWorkflowTasks === 0)) {
+        // 1. O tipo de benefício mudou para um valor não nulo, OU
+        // 2. Um novo tipo está sendo definido e não há tarefas de workflow existentes
+        if ($newBenefitType !== null && ($newBenefitType !== $oldBenefitType || $existingWorkflowTasks === 0)) {
             \Log::info('Creating workflow for case', [
                 'old_benefit_type' => $oldBenefitType,
                 'new_benefit_type' => $newBenefitType,
@@ -285,13 +359,19 @@ class CaseController extends Controller
             ]);
             
             $this->createWorkflowForCase($case, $newBenefitType);
+        } else if ($newBenefitType === null && $existingWorkflowTasks > 0) {
+            // Se o tipo de benefício foi removido, remover também as tarefas de workflow
+            $deletedTasks = $case->tasks()->where('is_workflow_task', true)->delete();
+            \Log::info('Removed workflow tasks because benefit type was removed', [
+                'case_id' => $case->id,
+                'deleted_tasks' => $deletedTasks
+            ]);
         }
-
-        $case->update($validated);
 
         \Log::info('Case updated successfully', [
             'case_id' => $case->id,
-            'updated_fields' => array_keys($validated)
+            'updated_fields' => array_keys($validated),
+            'current_benefit_type' => $case->fresh()->benefit_type
         ]);
 
         return redirect()->route('cases.show', $case)
@@ -533,6 +613,12 @@ class CaseController extends Controller
                         'concluido' => 0,
                         'rejeitado' => 0,
                     ],
+                    'inssStats' => [
+                        'total_processos' => 0,
+                        'processos_ativos' => 0,
+                        'processos_exigencia' => 0,
+                        'processos_concluidos' => 0,
+                    ],
                     'recentCases' => [],
                     'casesByStatus' => [],
                     'casesByMonth' => [],
@@ -550,6 +636,20 @@ class CaseController extends Controller
                     'protocolado' => \App\Models\LegalCase::where('company_id', $companyId)->where('status', 'protocolado')->count(),
                     'concluido' => \App\Models\LegalCase::where('company_id', $companyId)->where('status', 'concluido')->count(),
                     'rejeitado' => \App\Models\LegalCase::where('company_id', $companyId)->where('status', 'rejeitado')->count(),
+                ];
+
+                // Buscar estatísticas dos processos INSS
+                $inssStats = [
+                    'total_processos' => \App\Models\Processo::where('id_empresa', $companyId)->count(),
+                    'processos_ativos' => \App\Models\Processo::where('id_empresa', $companyId)
+                        ->where('situacao', 'EM ANÁLISE')
+                        ->count(),
+                    'processos_exigencia' => \App\Models\Processo::where('id_empresa', $companyId)
+                        ->where('situacao', 'EXIGÊNCIA')
+                        ->count(),
+                    'processos_concluidos' => \App\Models\Processo::where('id_empresa', $companyId)
+                        ->where('situacao', 'CONCLUÍDA')
+                        ->count(),
                 ];
 
                 // Buscar casos recentes
@@ -579,6 +679,7 @@ class CaseController extends Controller
                 return Inertia::render('dashboard', [
                     'isSuperAdmin' => false,
                     'stats' => $stats,
+                    'inssStats' => $inssStats,
                     'recentCases' => $recentCases->toArray(),
                     'casesByStatus' => $casesByStatus->toArray(),
                     'casesByMonth' => $casesByMonth->toArray(),
@@ -598,6 +699,12 @@ class CaseController extends Controller
                         'protocolado' => 0,
                         'concluido' => 0,
                         'rejeitado' => 0,
+                    ],
+                    'inssStats' => [
+                        'total_processos' => 0,
+                        'processos_ativos' => 0,
+                        'processos_exigencia' => 0,
+                        'processos_concluidos' => 0,
                     ],
                     'recentCases' => [],
                     'casesByStatus' => [],
@@ -860,15 +967,134 @@ class CaseController extends Controller
     public function getCaseTasks(LegalCase $case)
     {
         try {
+            // Log detalhado da requisição
+            \Log::info('=== INÍCIO getCaseTasks ===');
+            \Log::info('Dados da requisição:', [
+                'case_id' => $case->id,
+                'url' => request()->fullUrl(),
+                'method' => request()->method(),
+                'headers' => request()->headers->all(),
+                'user' => auth()->check() ? [
+                    'id' => auth()->id(),
+                    'name' => auth()->user()->name,
+                    'email' => auth()->user()->email,
+                    'is_admin' => auth()->user()->isAdmin()
+                ] : 'Usuário não autenticado'
+            ]);
+            
+            \Log::info('Dados do caso:', [
+                'case_id' => $case->id,
+                'client_name' => $case->client_name,
+                'benefit_type' => $case->benefit_type,
+                'has_benefit_type' => !empty($case->benefit_type),
+                'company_id' => $case->company_id,
+                'created_at' => $case->created_at,
+                'updated_at' => $case->updated_at,
+                'exists' => $case->exists,
+                'was_recently_created' => $case->wasRecentlyCreated
+            ]);
+
+            // Verificar se o caso foi carregado corretamente
+            if (!$case->exists) {
+                $error = 'Caso não encontrado';
+                \Log::error($error, ['case_id' => $case->id]);
+                return response()->json([
+                    'success' => false,
+                    'error' => $error,
+                    'tasks' => []
+                ], 404);
+            }
+
+            // Verificar permissões do usuário
+            $user = auth()->user();
+            if (!$user->isAdmin() && $user->company_id !== $case->company_id) {
+                $error = 'Acesso não autorizado a este caso';
+                \Log::warning($error, [
+                    'user_id' => $user->id,
+                    'user_company_id' => $user->company_id,
+                    'case_company_id' => $case->company_id
+                ]);
+                return response()->json([
+                    'success' => false,
+                    'error' => $error,
+                    'tasks' => []
+                ], 403);
+            }
+
+            // Log das tarefas relacionadas
+            $allTasks = $case->tasks()->get();
+            \Log::info('Todas as tarefas do caso (sem filtro):', [
+                'total' => $allTasks->count(),
+                'tasks' => $allTasks->map(function($task) {
+                    return [
+                        'id' => $task->id,
+                        'title' => $task->title,
+                        'description' => $task->description,
+                        'is_workflow_task' => $task->is_workflow_task,
+                        'order' => $task->order,
+                        'status' => $task->status,
+                        'due_date' => $task->due_date,
+                        'completed_at' => $task->completed_at,
+                        'created_at' => $task->created_at,
+                        'updated_at' => $task->updated_at
+                    ];
+                })
+            ]);
+
+            // Buscar apenas as tarefas de workflow
             $tasks = $case->tasks()
                 ->where('is_workflow_task', true)
                 ->orderBy('order', 'asc')
                 ->get();
 
-            return response()->json([
+            \Log::info('Tarefas de workflow encontradas:', [
+                'total' => $tasks->count(),
+                'tasks' => $tasks->map(function($task) {
+                    return [
+                        'id' => $task->id,
+                        'title' => $task->title,
+                        'description' => $task->description,
+                        'is_workflow_task' => $task->is_workflow_task,
+                        'order' => $task->order,
+                        'status' => $task->status,
+                        'due_date' => $task->due_date,
+                        'completed_at' => $task->completed_at,
+                        'created_at' => $task->created_at,
+                        'updated_at' => $task->updated_at
+                    ];
+                })
+            ]);
+
+            $response = [
                 'success' => true,
                 'tasks' => $tasks,
+                'debug' => [
+                    'case_id' => $case->id,
+                    'benefit_type' => $case->benefit_type,
+                    'task_count' => $tasks->count(),
+                    'all_task_count' => $allTasks->count(),
+                    'user' => [
+                        'id' => $user->id,
+                        'name' => $user->name,
+                        'email' => $user->email,
+                        'is_admin' => $user->isAdmin()
+                    ],
+                    'timestamp' => now()->toDateTimeString(),
+                    'environment' => config('app.env'),
+                    'debug_mode' => config('app.debug')
+                ]
+            ];
+
+            \Log::info('Resposta da API getCaseTasks:', [
+                'success' => $response['success'],
+                'task_count' => $response['debug']['task_count'],
+                'all_task_count' => $response['debug']['all_task_count'],
+                'user_id' => $response['debug']['user']['id']
             ]);
+            
+            \Log::info('=== FIM getCaseTasks ===');
+
+            return response()->json($response);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,

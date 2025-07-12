@@ -74,11 +74,14 @@ Route::middleware(['auth', 'web'])->group(function () {
 });
 
 Route::middleware(['auth:sanctum', 'api.cors'])->group(function () {
-
     Route::patch('/employment-relationships/{id}', [EmploymentRelationshipController::class, 'update']);
     Route::get('/employment-relationships/{id}/tentativas', [CollectionAttemptController::class, 'index']);
     Route::patch('/employment-relationships/{id}/tentativas/{tentativa}', [CollectionAttemptController::class, 'update']);
     Route::patch('/tasks/{task}', [TaskController::class, 'update']);
+    
+    // Rota para buscar tarefas do caso
+    Route::get('/cases/{case}/tasks', [\App\Http\Controllers\CaseController::class, 'getCaseTasks'])
+        ->name('api.cases.tasks');
 });
 
 // Petition API routes

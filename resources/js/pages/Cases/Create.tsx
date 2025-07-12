@@ -76,6 +76,8 @@ export default function Create({ benefitTypes }: CreateProps) {
         const files = e.dataTransfer.files;
         if (files.length > 0 && files[0].type === 'application/pdf') {
             setCnisFile(files[0]);
+            setCnisData(null); // Limpar dados anteriores
+            setCnisError(null); // Limpar erros anteriores
         }
     };
 
@@ -83,6 +85,8 @@ export default function Create({ benefitTypes }: CreateProps) {
         const file = e.target.files?.[0];
         if (file && file.type === 'application/pdf') {
             setCnisFile(file);
+            setCnisData(null); // Limpar dados anteriores
+            setCnisError(null); // Limpar erros anteriores
         }
     };
 
@@ -224,7 +228,7 @@ export default function Create({ benefitTypes }: CreateProps) {
                                     />
 
                                     {cnisFile ? (
-                                        <div className="space-y-4">
+                                        <div className="space-y-4" onClick={(e) => e.stopPropagation()}>
                                             <div className="flex items-center justify-center gap-2 text-green-600">
                                                 <FileText className="h-8 w-8" />
                                                 <div>
@@ -234,7 +238,10 @@ export default function Create({ benefitTypes }: CreateProps) {
                                             </div>
 
                                             {!isProcessingCnis && !cnisData && (
-                                                <Button onClick={processCnis} disabled={isProcessingCnis}>
+                                                <Button onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    processCnis();
+                                                }} disabled={isProcessingCnis}>
                                                     {isProcessingCnis ? (
                                                         <>
                                                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />

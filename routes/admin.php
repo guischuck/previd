@@ -4,7 +4,7 @@ use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\CompanyController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\DocumentController;
-use App\Http\Controllers\Admin\TemplateController;
+// use App\Http\Controllers\Admin\TemplateController;
 use App\Http\Controllers\Admin\SettingsController;
 use Illuminate\Support\Facades\Route;
 
@@ -44,16 +44,16 @@ Route::middleware(['auth', 'ensure.super.admin'])->group(function () {
         'destroy' => 'admin.documents.destroy',
     ]);
 
-    // Templates
-    Route::resource('templates', TemplateController::class)->names([
-        'index' => 'admin.templates.index',
-        'create' => 'admin.templates.create',
-        'store' => 'admin.templates.store',
-        'show' => 'admin.templates.show',
-        'edit' => 'admin.templates.edit',
-        'update' => 'admin.templates.update',
-        'destroy' => 'admin.templates.destroy',
-    ]);
+    // Templates (comentado até que o TemplateController seja implementado)
+    // Route::resource('templates', TemplateController::class)->names([
+    //     'index' => 'admin.templates.index',
+    //     'create' => 'admin.templates.create',
+    //     'store' => 'admin.templates.store',
+    //     'show' => 'admin.templates.show',
+    //     'edit' => 'admin.templates.edit',
+    //     'update' => 'admin.templates.update',
+    //     'destroy' => 'admin.templates.destroy',
+    // ]);
 
     // Configurações
     Route::get('settings', [SettingsController::class, 'index'])->name('admin.settings.index');
