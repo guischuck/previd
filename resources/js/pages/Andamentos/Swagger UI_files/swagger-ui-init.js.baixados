@@ -1,0 +1,2061 @@
+
+window.onload = function() {
+  // Build a system
+  var url = window.location.search.match(/url=([^&]+)/);
+  if (url && url.length > 1) {
+    url = decodeURIComponent(url[1]);
+  } else {
+    url = window.location.origin;
+  }
+  var options = {
+  "swaggerDoc": {
+    "openapi": "3.0.0",
+    "x-tagGroups": [
+      {
+        "name": "Contacts",
+        "tags": [
+          "Contacts"
+        ],
+        "collapsed": true
+      },
+      {
+        "name": "Lawsuits",
+        "tags": [
+          "Lawsuits"
+        ],
+        "collapsed": true
+      },
+      {
+        "name": "Tasks",
+        "tags": [
+          "Tasks"
+        ],
+        "collapsed": true
+      },
+      {
+        "name": "Users",
+        "tags": [
+          "Users"
+        ],
+        "collapsed": true
+      }
+    ],
+    "info": {
+      "title": "ADVBOX API",
+      "version": "1.0.0",
+      "description": "Access is exclusive for clients and service providers approved by ADVBOX.\n\nAuthentication is performed through Bearer token, sent in the request header (e.g., \"Authorization\": \"Bearer abcd1234efgh5678ijkl9012mnop3456qrst7890\").\n\nRate limits:\n- GET: 30 requests per minute\n- POST: 100 requests per day for each route\n- PUT: 500 requests per day\n\n⚠️ **Warning:** The **Try it out** functionality is temporarily unavailable. To test the routes, use external tools such as **Postman** or **cURL**. Payload examples are available in the documentation of each route.\n\nLast updated: 2025-06-25 15:32:00 (America/Sao_Paulo)"
+    },
+    "components": {
+      "x-swagger-ui-settings": {
+        "tryItOutEnabled": false,
+        "displayRequestDuration": true,
+        "filter": true,
+        "defaultModelsExpandDepth": 4,
+        "defaultModelExpandDepth": 4,
+        "docExpansion": "list",
+        "showExtensions": true
+      },
+      "securitySchemes": {
+        "BearerAuth": {
+          "type": "http",
+          "scheme": "bearer",
+          "bearerFormat": "JWT"
+        }
+      }
+    },
+    "security": [
+      {
+        "BearerAuth": []
+      }
+    ],
+    "paths": {
+      "/customers": {
+        "get": {
+          "tags": [
+            "Contacts"
+          ],
+          "summary": "Retrieve a list of customers based on their name or identification (CPF/CNPJ).",
+          "description": "Retrieve a list of customers based on their name or identification (CPF/CNPJ).\n\nExample:\n```bash\ncurl -X GET 'https://app.advbox.com.br/api/v1/customers?name=John&limit=10' \\\n  -H 'Accept: application/json' \\\n  -H 'Content-Type: application/json' \\\n  -H 'Authorization: Bearer your_token_here'\\\n```",
+          "security": [
+            {
+              "BearerAuth": []
+            }
+          ],
+          "parameters": [
+            {
+              "in": "query",
+              "name": "name",
+              "required": false,
+              "schema": {
+                "type": "string"
+              },
+              "description": "Customer name or part of it. You can use a full name or a partial search term (e.g., a first name or last name)."
+            },
+            {
+              "in": "query",
+              "name": "phone",
+              "required": false,
+              "schema": {
+                "type": "string"
+              },
+              "description": "Customer phone (e.g., 48991234567 or (48)99123-4567)."
+            },
+            {
+              "in": "query",
+              "name": "identification",
+              "required": false,
+              "schema": {
+                "type": "string",
+                "pattern": "^[\\d.-]+$"
+              },
+              "description": "Customer identification (CPF/CNPJ)."
+            },
+            {
+              "in": "query",
+              "name": "limit",
+              "required": false,
+              "schema": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 1000
+              },
+              "description": "Number of items in the response, between 1 and 1000."
+            },
+            {
+              "in": "query",
+              "name": "offset",
+              "required": false,
+              "schema": {
+                "type": "integer"
+              },
+              "description": "Number of items to skip before starting the response (pagination)."
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "OK"
+            },
+            "400": {
+              "description": "Invalid request (e.g., malformed CPF)"
+            },
+            "401": {
+              "description": "Unauthenticated"
+            },
+            "404": {
+              "description": "Not found"
+            }
+          }
+        },
+        "post": {
+          "tags": [
+            "Contacts"
+          ],
+          "operationId": "createCustomer",
+          "summary": "Create a new customer",
+          "parameters": [
+            {
+              "name": "users_id",
+              "in": "query",
+              "description": "User ID",
+              "required": true,
+              "schema": {
+                "type": "integer"
+              }
+            },
+            {
+              "name": "customers_origins_id",
+              "in": "query",
+              "description": "Customer origin ID",
+              "required": true,
+              "schema": {
+                "type": "integer"
+              }
+            },
+            {
+              "name": "name",
+              "in": "query",
+              "description": "Customer name",
+              "required": true,
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "email",
+              "in": "query",
+              "description": "Customer email",
+              "required": false,
+              "schema": {
+                "type": "string"
+              }
+            }
+          ],
+          "description": "Create a new customer in the system.\n\nExample:\n```bash\ncurl -X POST 'https://app.advbox.com.br/api/v1/customers' \\\n  -H 'Accept: application/json' \\\n  -H 'Authorization: Bearer your_token_here' \\\n  -H 'Content-Type: application/json' \\\n  -d '{\n    \"users_id\": 12345,\n    \"customers_origins_id\": 67890,\n    \"name\": \"John Doe\",\n    \"email\": \"john.doe@example.com\"\n  }'\n```",
+          "security": [
+            {
+              "BearerAuth": []
+            }
+          ],
+          "requestBody": {
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "users_id",
+                    "customers_origins_id",
+                    "name",
+                    "email"
+                  ],
+                  "example": {
+                    "users_id": 12345,
+                    "customers_origins_id": 67890,
+                    "name": "John Doe",
+                    "email": "john.doe@example.com"
+                  },
+                  "x-examples": {
+                    "example-1": {
+                      "users_id": 12345,
+                      "customers_origins_id": 67890,
+                      "name": "John Doe",
+                      "email": "john.doe@example.com"
+                    }
+                  },
+                  "properties": {
+                    "users_id": {
+                      "type": "integer",
+                      "description": "ID of the user creating the customer"
+                    },
+                    "customers_origins_id": {
+                      "type": "integer",
+                      "description": "ID of the customer origin"
+                    },
+                    "name": {
+                      "type": "string",
+                      "description": "Customer name"
+                    },
+                    "email": {
+                      "type": "string",
+                      "description": "Customer email address"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "responses": {
+            "201": {
+              "description": "Customer created successfully",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "success": {
+                          "type": "boolean",
+                          "description": "Indicates if the operation was successful"
+                        },
+                        "customer_id": {
+                          "type": "integer",
+                          "description": "ID of the created customer"
+                        }
+                      }
+                    },
+                    "example": [
+                      {
+                        "success": true,
+                        "customer_id": 128712976
+                      }
+                    ]
+                  }
+                }
+              }
+            },
+            "400": {
+              "description": "Invalid request (e.g., missing required fields)"
+            },
+            "401": {
+              "description": "Unauthorized (invalid or missing token)"
+            },
+            "500": {
+              "description": "Internal server error"
+            }
+          }
+        }
+      },
+      "/customers/{id}": {
+        "get": {
+          "tags": [
+            "Contacts"
+          ],
+          "summary": "Get customer by ID",
+          "description": "Retrieve a customer based on its unique ID.\n\nExample:\n```bash\ncurl -X GET 'https://app.advbox.com.br/api/v1/customers/123' \\\n  -H 'Accept: application/json' \\\n  -H 'Content-Type: application/json' \\\n  -H 'Authorization: Bearer your_token_here'\\\n```",
+          "security": [
+            {
+              "BearerAuth": []
+            }
+          ],
+          "parameters": [
+            {
+              "in": "path",
+              "name": "id",
+              "required": true,
+              "schema": {
+                "type": "integer"
+              },
+              "description": "Customer ID"
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "OK"
+            },
+            "400": {
+              "description": "Invalid request (e.g., malformed ID)"
+            },
+            "401": {
+              "description": "Unauthenticated"
+            },
+            "404": {
+              "description": "Not found"
+            }
+          }
+        }
+      },
+      "/customers/birthdays": {
+        "get": {
+          "tags": [
+            "Contacts"
+          ],
+          "summary": "Retrieve a list of customers with birthdays in the current month.",
+          "description": "Retrieve a list of customers with birthdays in the current month.\n\nExample:\n```bash\ncurl -X GET 'https://app.advbox.com.br/api/v1/customers/birthdays?month=5&limit=10' \\\n  -H 'Accept: application/json' \\\n  -H 'Content-Type: application/json' \\\n  -H 'Authorization: Bearer your_token_here'\\\n```",
+          "security": [
+            {
+              "BearerAuth": []
+            }
+          ],
+          "parameters": [
+            {
+              "in": "query",
+              "name": "limit",
+              "required": false,
+              "schema": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 1000
+              },
+              "description": "Number of items in the response, between 1 and 1000."
+            },
+            {
+              "in": "query",
+              "name": "offset",
+              "required": false,
+              "schema": {
+                "type": "integer"
+              },
+              "description": "Number of items to skip before starting the response (pagination)."
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "OK"
+            },
+            "400": {
+              "description": "Invalid request (e.g., malformed CPF)"
+            },
+            "401": {
+              "description": "Unauthenticated"
+            },
+            "404": {
+              "description": "Not found"
+            }
+          }
+        }
+      },
+      "/lawsuits": {
+        "get": {
+          "tags": [
+            "Lawsuits"
+          ],
+          "summary": "Retrieve a list of lawsuits based on filters like name, process number, protocol number, or customer ID.",
+          "description": "Retrieve a list of lawsuits with optional filters.\n\nExample:\n```bash\ncurl -X GET 'https://app.advbox.com.br/api/v1/lawsuits?customer_id=123&limit=10' \\\n  -H 'Accept: application/json' \\\n  -H 'Content-Type: application/json' \\\n  -H 'Authorization: Bearer your_token_here'\\\n```",
+          "security": [
+            {
+              "BearerAuth": []
+            }
+          ],
+          "parameters": [
+            {
+              "in": "query",
+              "name": "name",
+              "required": false,
+              "schema": {
+                "type": "string"
+              },
+              "description": "Lawsuit name or part of it."
+            },
+            {
+              "in": "query",
+              "name": "process_number",
+              "required": false,
+              "schema": {
+                "type": "string"
+              },
+              "description": "Process number of the lawsuit."
+            },
+            {
+              "in": "query",
+              "name": "protocol_number",
+              "required": false,
+              "schema": {
+                "type": "string"
+              },
+              "description": "Protocol number of the lawsuit."
+            },
+            {
+              "in": "query",
+              "name": "customer_id",
+              "required": false,
+              "schema": {
+                "type": "integer"
+              },
+              "description": "Customer ID associated with the lawsuit."
+            },
+            {
+              "in": "query",
+              "name": "limit",
+              "required": false,
+              "schema": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 100
+              },
+              "description": "Number of items in the response, between 1 and 100."
+            },
+            {
+              "in": "query",
+              "name": "offset",
+              "required": false,
+              "schema": {
+                "type": "integer"
+              },
+              "description": "Number of items to skip before starting the response (pagination)."
+            },
+            {
+              "in": "query",
+              "name": "group",
+              "required": false,
+              "schema": {
+                "type": "string"
+              },
+              "description": "Filter lawsuits by group name or ID."
+            },
+            {
+              "in": "query",
+              "name": "type",
+              "required": false,
+              "schema": {
+                "type": "string"
+              },
+              "description": "Filter lawsuits by type name or ID."
+            },
+            {
+              "in": "query",
+              "name": "responsible",
+              "required": false,
+              "schema": {
+                "type": "string"
+              },
+              "description": "Filter lawsuits by responsible person name or ID."
+            },
+            {
+              "in": "query",
+              "name": "stage",
+              "required": false,
+              "schema": {
+                "type": "string"
+              },
+              "description": "Filter lawsuits by stage name or ID (Judicial, Recursal...)"
+            },
+            {
+              "in": "query",
+              "name": "step",
+              "required": false,
+              "schema": {
+                "type": "string"
+              },
+              "description": "Filter lawsuits by step name or ID (Aguardando retorno, Petição inicial...)"
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "OK"
+            },
+            "400": {
+              "description": "Invalid request"
+            },
+            "401": {
+              "description": "Unauthenticated"
+            },
+            "404": {
+              "description": "Not found"
+            }
+          }
+        },
+        "post": {
+          "tags": [
+            "Lawsuits"
+          ],
+          "operationId": "createLawsuit",
+          "summary": "Create a new lawsuit",
+          "parameters": [
+            {
+              "name": "users_id",
+              "in": "query",
+              "description": "User ID",
+              "required": true,
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "customers_id",
+              "in": "query",
+              "description": "Customer IDs",
+              "required": true,
+              "explode": false,
+              "style": "form",
+              "schema": {
+                "type": "array",
+                "items": {
+                  "type": "integer"
+                },
+                "example": [
+                  67890,
+                  54321
+                ]
+              }
+            },
+            {
+              "name": "stages_id",
+              "in": "query",
+              "description": "Stage ID",
+              "required": true,
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "type_lawsuits_id",
+              "in": "query",
+              "description": "Lawsuit type ID",
+              "required": true,
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "process_number",
+              "in": "query",
+              "description": "Process number",
+              "required": false,
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "protocol_number",
+              "in": "query",
+              "description": "Protocol number",
+              "required": false,
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "folder",
+              "in": "query",
+              "description": "Folder",
+              "required": false,
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "date",
+              "in": "query",
+              "description": "Date (format: DD/MM/YYYY)",
+              "required": false,
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "notes",
+              "in": "query",
+              "description": "Notes",
+              "required": false,
+              "schema": {
+                "type": "string"
+              }
+            }
+          ],
+          "description": "Create a new lawsuit in the system.\n\nExample:\n```bash\ncurl -X POST 'https://app.advbox.com.br/api/v1/lawsuits' \\\n  -H 'Accept: application/json' \\\n  -H 'Authorization: Bearer your_token_here' \\\n  -H 'Content-Type: application/json' \\\n  -d '{\n    \"users_id\": \"12345\",\n    \"customers_id\": [67890, 54321],\n    \"stages_id\": \"98765\",\n    \"type_lawsuits_id\": \"43210\",\n    \"protocol_number\": \"PROC123456\",\n    \"folder\": \"Client A\",\n    \"date\": \"29/05/2025\",\n    \"notes\": \"Processo iniciado para cliente corporativo referente a disputa contratual\"\n  }'\n```",
+          "security": [
+            {
+              "BearerAuth": []
+            }
+          ],
+          "requestBody": {
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "users_id",
+                    "customers_id",
+                    "stages_id",
+                    "type_lawsuits_id"
+                  ],
+                  "example": {
+                    "users_id": "12345",
+                    "customers_id": [
+                      67890,
+                      54321
+                    ],
+                    "stages_id": "98765",
+                    "type_lawsuits_id": "43210",
+                    "protocol_number": "PROC123456",
+                    "folder": "Client A",
+                    "date": "29/05/2025",
+                    "notes": "Processo iniciado para cliente corporativo referente a disputa contratual",
+                    "process_number": "0123456-78.2025.8.26.0100"
+                  },
+                  "x-examples": {
+                    "example-1": {
+                      "users_id": "12345",
+                      "customers_id": [
+                        67890,
+                        54321
+                      ],
+                      "stages_id": "98765",
+                      "type_lawsuits_id": "43210",
+                      "protocol_number": "PROC123456",
+                      "folder": "Client A",
+                      "date": "29/05/2025",
+                      "notes": "Processo iniciado para cliente corporativo referente a disputa contratual",
+                      "process_number": "0123456-78.2025.8.26.0100"
+                    }
+                  },
+                  "properties": {
+                    "users_id": {
+                      "type": "string",
+                      "description": "ID of the user creating the lawsuit"
+                    },
+                    "customers_id": {
+                      "type": "array",
+                      "items": {
+                        "type": "integer"
+                      },
+                      "description": "List of customer IDs associated with the lawsuit"
+                    },
+                    "stages_id": {
+                      "type": "string",
+                      "description": "ID of the lawsuit stage"
+                    },
+                    "type_lawsuits_id": {
+                      "type": "string",
+                      "description": "ID of the lawsuit type"
+                    },
+                    "process_number": {
+                      "type": "string",
+                      "description": "Process number of the lawsuit"
+                    },
+                    "protocol_number": {
+                      "type": "string",
+                      "description": "Protocol number of the lawsuit"
+                    },
+                    "folder": {
+                      "type": "string",
+                      "description": "Folder name for the lawsuit"
+                    },
+                    "date": {
+                      "type": "string",
+                      "description": "Lawsuit date in DD/MM/YYYY format"
+                    },
+                    "notes": {
+                      "type": "string",
+                      "description": "Detailed information about the lawsuit, including history, important notes and additional context for future reference"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "responses": {
+            "201": {
+              "description": "Lawsuit created successfully",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "success": {
+                          "type": "boolean",
+                          "description": "Indicates if the operation was successful"
+                        },
+                        "lawsuit_id": {
+                          "type": "integer",
+                          "description": "ID of the created lawsuit"
+                        }
+                      }
+                    },
+                    "example": [
+                      {
+                        "success": true,
+                        "lawsuit_id": 128712976
+                      }
+                    ]
+                  }
+                }
+              }
+            },
+            "400": {
+              "description": "Invalid request (e.g., missing required fields)"
+            },
+            "401": {
+              "description": "Unauthorized (invalid or missing token)"
+            },
+            "500": {
+              "description": "Internal server error"
+            }
+          }
+        }
+      },
+      "/lawsuits/{id}": {
+        "get": {
+          "tags": [
+            "Lawsuits"
+          ],
+          "summary": "Get lawsuit by ID",
+          "description": "Retrieve a lawsuit based on its unique ID.\n\nExample:\n```bash\ncurl -X GET 'https://app.advbox.com.br/api/v1/lawsuits/123' \\\n  -H 'Accept: application/json' \\\n  -H 'Content-Type: application/json' \\\n  -H 'Authorization: Bearer your_token_here'\\\n```",
+          "security": [
+            {
+              "BearerAuth": []
+            }
+          ],
+          "parameters": [
+            {
+              "in": "path",
+              "name": "id",
+              "required": true,
+              "schema": {
+                "type": "integer"
+              },
+              "description": "Lawsuit ID"
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "OK"
+            },
+            "400": {
+              "description": "Invalid request (e.g., malformed ID)"
+            },
+            "401": {
+              "description": "Unauthenticated"
+            },
+            "404": {
+              "description": "Not found"
+            }
+          }
+        },
+        "put": {
+          "tags": [
+            "Lawsuits"
+          ],
+          "operationId": "updateLawsuit",
+          "summary": "Update an existing lawsuit",
+          "parameters": [
+            {
+              "in": "path",
+              "name": "id",
+              "required": true,
+              "schema": {
+                "type": "integer"
+              },
+              "description": "Lawsuit ID"
+            },
+            {
+              "name": "users_id",
+              "in": "query",
+              "description": "User ID",
+              "required": true,
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "stages_id",
+              "in": "query",
+              "description": "Stage ID",
+              "required": true,
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "type_lawsuits_id",
+              "in": "query",
+              "description": "Lawsuit type ID",
+              "required": true,
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "process_number",
+              "in": "query",
+              "description": "Process number",
+              "required": false,
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "protocol_number",
+              "in": "query",
+              "description": "Protocol number",
+              "required": false,
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "folder",
+              "in": "query",
+              "description": "Folder",
+              "required": false,
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "date",
+              "in": "query",
+              "description": "Date (format: DD/MM/YYYY)",
+              "required": false,
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "notes",
+              "in": "query",
+              "description": "Notes",
+              "required": false,
+              "schema": {
+                "type": "string"
+              }
+            }
+          ],
+          "description": "Update an existing lawsuit in the system.\n\n⚠️ **Important:** Only send the fields you want to update. Any field included in the request will be updated, and fields not included will remain unchanged.\n\nExample:\n```bash\ncurl -X PUT 'https://app.advbox.com.br/api/v1/lawsuits/123' \\\n  -H 'Accept: application/json' \\\n  -H 'Authorization: Bearer your_token_here' \\\n  -H 'Content-Type: application/json' \\\n  -d '{\n    \"stages_id\": \"98765\"\n  }'\n```",
+          "security": [
+            {
+              "BearerAuth": []
+            }
+          ],
+          "requestBody": {
+            "required": false,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "example": {
+                    "stages_id": "98765"
+                  },
+                  "properties": {
+                    "users_id": {
+                      "type": "string",
+                      "description": "ID of the user updating the lawsuit"
+                    },
+                    "stages_id": {
+                      "type": "string",
+                      "description": "ID of the lawsuit stage"
+                    },
+                    "type_lawsuits_id": {
+                      "type": "string",
+                      "description": "ID of the lawsuit type"
+                    },
+                    "process_number": {
+                      "type": "string",
+                      "description": "Process number of the lawsuit"
+                    },
+                    "protocol_number": {
+                      "type": "string",
+                      "description": "Protocol number of the lawsuit"
+                    },
+                    "folder": {
+                      "type": "string",
+                      "description": "Folder name for the lawsuit"
+                    },
+                    "date": {
+                      "type": "string",
+                      "description": "Lawsuit date in DD/MM/YYYY format"
+                    },
+                    "notes": {
+                      "type": "string",
+                      "description": "Detailed information about the lawsuit, including history, important notes and additional context for future reference"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "responses": {
+            "200": {
+              "description": "Lawsuit updated successfully",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "success": {
+                          "type": "boolean",
+                          "description": "Indicates if the operation was successful"
+                        },
+                        "lawsuits_id": {
+                          "type": "string",
+                          "description": "ID of the updated lawsuit"
+                        }
+                      }
+                    },
+                    "example": [
+                      {
+                        "success": true,
+                        "lawsuits_id": "2468677"
+                      }
+                    ]
+                  }
+                }
+              }
+            },
+            "400": {
+              "description": "Invalid request (e.g., missing required fields)"
+            },
+            "401": {
+              "description": "Unauthorized (invalid or missing token)"
+            },
+            "404": {
+              "description": "Lawsuit not found"
+            },
+            "500": {
+              "description": "Internal server error"
+            }
+          }
+        }
+      },
+      "/posts": {
+        "get": {
+          "tags": [
+            "Tasks"
+          ],
+          "operationId": "getPosts",
+          "summary": "Retrieve a list of tasks based on filters",
+          "description": "Retrieve a list of tasks with optional filters. Note: When filtering by date, both start and end dates must be provided for the filter to be applied. The date range cannot exceed 90 days.\n\nExample:\n```bash\ncurl -X GET 'https://app.advbox.com.br/api/v1/posts?date_start=2025-06-01&date_end=2025-06-30&user_id=12345' \\\n  -H 'Accept: application/json' \\\n  -H 'Content-Type: application/json' \\\n  -H 'Authorization: Bearer your_token_here'\\\n```",
+          "security": [
+            {
+              "BearerAuth": []
+            }
+          ],
+          "parameters": [
+            {
+              "in": "query",
+              "name": "date_start",
+              "required": true,
+              "schema": {
+                "type": "string",
+                "format": "date"
+              },
+              "description": "Start date for appointment date filter (format: yyyy-mm-dd). Must be used together with date_end."
+            },
+            {
+              "in": "query",
+              "name": "date_end",
+              "required": true,
+              "schema": {
+                "type": "string",
+                "format": "date"
+              },
+              "description": "End date for appointment date filter (format: yyyy-mm-dd). Must be used together with date_start."
+            },
+            {
+              "in": "query",
+              "name": "completed_start",
+              "required": false,
+              "schema": {
+                "type": "string",
+                "format": "date"
+              },
+              "description": "Start date for completion date filter (format: yyyy-mm-dd). Must be used together with completed_end."
+            },
+            {
+              "in": "query",
+              "name": "completed_end",
+              "required": false,
+              "schema": {
+                "type": "string",
+                "format": "date"
+              },
+              "description": "End date for completion date filter (format: yyyy-mm-dd). Must be used together with completed_start."
+            },
+            {
+              "in": "query",
+              "name": "user_id",
+              "required": false,
+              "schema": {
+                "type": "string"
+              },
+              "description": "Filter tasks by responsible user ID"
+            },
+            {
+              "in": "query",
+              "name": "user_name",
+              "required": false,
+              "schema": {
+                "type": "string"
+              },
+              "description": "Filter tasks by responsible user name (partial match supported)"
+            },
+            {
+              "in": "query",
+              "name": "task_id",
+              "required": false,
+              "schema": {
+                "type": "string"
+              },
+              "description": "Filter by specific task ID"
+            },
+            {
+              "in": "query",
+              "name": "lawsuit_id",
+              "required": false,
+              "schema": {
+                "type": "string"
+              },
+              "description": "Filter tasks by associated lawsuit ID"
+            },
+            {
+              "in": "query",
+              "name": "limit",
+              "required": false,
+              "schema": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 100
+              },
+              "description": "Number of items in the response, between 1 and 100."
+            },
+            {
+              "in": "query",
+              "name": "offset",
+              "required": false,
+              "schema": {
+                "type": "integer",
+                "default": 0
+              },
+              "description": "Number of items to skip before starting the response (pagination)."
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "List of tasks",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "offset": {
+                          "type": "integer",
+                          "description": "Current offset in pagination"
+                        },
+                        "limit": {
+                          "type": "integer",
+                          "description": "Number of items per page"
+                        },
+                        "totalCount": {
+                          "type": "integer",
+                          "description": "Total number of tasks matching the filters"
+                        },
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "integer",
+                                "description": "Task ID"
+                              },
+                              "date": {
+                                "type": "string",
+                                "description": "Task date"
+                              },
+                              "date_deadline": {
+                                "type": "string",
+                                "nullable": true,
+                                "description": "Deadline date"
+                              },
+                              "task": {
+                                "type": "string",
+                                "description": "Task name"
+                              },
+                              "reward": {
+                                "type": "integer",
+                                "description": "Task reward points"
+                              },
+                              "notes": {
+                                "type": "string",
+                                "description": "Task notes or comments"
+                              },
+                              "local": {
+                                "type": "string",
+                                "nullable": true,
+                                "description": "Task location"
+                              },
+                              "lawsuits_id": {
+                                "type": "integer",
+                                "description": "Associated lawsuit ID"
+                              },
+                              "created_at": {
+                                "type": "string",
+                                "description": "Creation timestamp"
+                              },
+                              "lawsuit": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "integer",
+                                    "description": "Lawsuit ID"
+                                  },
+                                  "process_number": {
+                                    "type": "string",
+                                    "nullable": true,
+                                    "description": "Process number"
+                                  },
+                                  "protocol_number": {
+                                    "type": "string",
+                                    "nullable": true,
+                                    "description": "Protocol number"
+                                  },
+                                  "customers": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "customer_id": {
+                                          "type": "integer",
+                                          "description": "Customer ID"
+                                        },
+                                        "name": {
+                                          "type": "string",
+                                          "description": "Customer name"
+                                        },
+                                        "identification": {
+                                          "type": "string",
+                                          "nullable": true,
+                                          "description": "Customer identification"
+                                        },
+                                        "customers_origins_id": {
+                                          "type": "integer",
+                                          "nullable": true,
+                                          "description": "Customer origin ID"
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+                              },
+                              "users": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "user_id": {
+                                      "type": "integer",
+                                      "description": "User ID"
+                                    },
+                                    "name": {
+                                      "type": "string",
+                                      "description": "User name"
+                                    },
+                                    "completed": {
+                                      "type": "string",
+                                      "description": "Completion timestamp"
+                                    },
+                                    "important": {
+                                      "type": "integer",
+                                      "description": "Importance flag (0 or 1)"
+                                    },
+                                    "urgent": {
+                                      "type": "integer",
+                                      "description": "Urgency flag (0 or 1)"
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        },
+                        "query": {
+                          "type": "object",
+                          "description": "Query parameters used in the request",
+                          "properties": {
+                            "completed_start": {
+                              "type": "string",
+                              "description": "Start date for completion filter"
+                            },
+                            "completed_end": {
+                              "type": "string",
+                              "description": "End date for completion filter"
+                            },
+                            "user_name": {
+                              "type": "string",
+                              "description": "User name filter"
+                            },
+                            "limit": {
+                              "type": "string",
+                              "description": "Limit parameter"
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "example": [
+                      {
+                        "offset": 0,
+                        "limit": 2,
+                        "totalCount": 288,
+                        "data": [
+                          {
+                            "id": 118672662,
+                            "date": "2025-05-12 00:00:00",
+                            "date_deadline": null,
+                            "task": "AUDIÊNCIA PRELIMINAR",
+                            "reward": 0,
+                            "notes": "Comparecer à audiência preliminar do processo 0123456-78.2025.8.26.0100. Levar documentos de identificação do cliente e procuração. Revisar argumentos de defesa prévia.",
+                            "local": null,
+                            "lawsuits_id": 7210155,
+                            "created_at": "2025-05-12 15:47:45",
+                            "lawsuit": {
+                              "id": 7210155,
+                              "process_number": null,
+                              "protocol_number": null,
+                              "customers": [
+                                {
+                                  "customer_id": 7945019,
+                                  "name": "EMPRESA ABC",
+                                  "identification": null,
+                                  "customers_origins_id": null
+                                }
+                              ]
+                            },
+                            "users": [
+                              {
+                                "user_id": 163,
+                                "name": "JOÃO SILVA",
+                                "completed": "2025-06-13 10:48:23",
+                                "important": 0,
+                                "urgent": 0
+                              }
+                            ]
+                          },
+                          {
+                            "id": 118614408,
+                            "date": "2025-05-12 00:00:00",
+                            "date_deadline": null,
+                            "task": "PRAZO RECURSAL",
+                            "reward": 200,
+                            "notes": "Preparar e protocolar recurso de apelação contra sentença desfavorável no processo 9876543-21.2025.8.26.0100. Prazo fatal dia 15/05/2025. Focar nos argumentos de cerceamento de defesa e ausência de fundamentação adequada na decisão recorrida.",
+                            "local": null,
+                            "lawsuits_id": 634330,
+                            "created_at": "2025-05-12 14:03:47",
+                            "lawsuit": {
+                              "id": 634330,
+                              "process_number": null,
+                              "protocol_number": null,
+                              "customers": [
+                                {
+                                  "customer_id": 778660,
+                                  "name": "EMPRESA XYZ LTDA",
+                                  "identification": null,
+                                  "customers_origins_id": 69605
+                                }
+                              ]
+                            },
+                            "users": [
+                              {
+                                "user_id": 163,
+                                "name": "MARIA OLIVEIRA",
+                                "completed": "2025-06-02 15:17:09",
+                                "important": 0,
+                                "urgent": 0
+                              }
+                            ]
+                          }
+                        ],
+                        "query": {
+                          "completed_start": "2025-06-01",
+                          "completed_end": "2025-06-30",
+                          "user_name": "MARIA OLIVEIRA",
+                          "limit": "2"
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            },
+            "400": {
+              "description": "Invalid request (e.g., date range exceeds 90 days or missing paired date parameters)"
+            },
+            "401": {
+              "description": "Unauthorized (invalid or missing token)"
+            },
+            "500": {
+              "description": "Internal server error"
+            }
+          }
+        },
+        "post": {
+          "tags": [
+            "Tasks"
+          ],
+          "operationId": "createPost",
+          "summary": "Create a new task",
+          "parameters": [
+            {
+              "name": "from",
+              "in": "query",
+              "description": "ID of the user creating the task",
+              "required": true,
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "guests",
+              "in": "query",
+              "description": "Guest user IDs",
+              "required": true,
+              "explode": false,
+              "style": "form",
+              "schema": {
+                "type": "array",
+                "items": {
+                  "type": "integer"
+                },
+                "example": [
+                  67890,
+                  54321
+                ]
+              }
+            },
+            {
+              "name": "tasks_id",
+              "in": "query",
+              "description": "Task ID",
+              "required": true,
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "lawsuits_id",
+              "in": "query",
+              "description": "Lawsuit ID",
+              "required": true,
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "comments",
+              "in": "query",
+              "description": "Comments about the task",
+              "required": false,
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "start_date",
+              "in": "query",
+              "description": "Start date (format: DD/MM/YYYY)",
+              "required": true,
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "start_time",
+              "in": "query",
+              "description": "Start time (format: HH:MM)",
+              "required": false,
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "end_date",
+              "in": "query",
+              "description": "End date (format: DD/MM/YYYY)",
+              "required": false,
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "end_time",
+              "in": "query",
+              "description": "End time (format: HH:MM)",
+              "required": false,
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "date_deadline",
+              "in": "query",
+              "description": "Deadline date (format: DD/MM/YYYY)",
+              "required": false,
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "local",
+              "in": "query",
+              "description": "Task location",
+              "required": false,
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "urgent",
+              "in": "query",
+              "description": "Indicates if the task is urgent",
+              "required": false,
+              "schema": {
+                "type": "boolean"
+              }
+            },
+            {
+              "name": "important",
+              "in": "query",
+              "description": "Indicates if the task is important",
+              "required": false,
+              "schema": {
+                "type": "boolean"
+              }
+            },
+            {
+              "name": "display_schedule",
+              "in": "query",
+              "description": "Indicates if the task should be displayed in the calendar",
+              "required": false,
+              "schema": {
+                "type": "boolean"
+              }
+            }
+          ],
+          "description": "Create a new task in the system.\n\nExample:\n```bash\ncurl -X POST 'https://app.advbox.com.br/api/v1/posts' \\\n  -H 'Accept: application/json' \\\n  -H 'Authorization: Bearer your_token_here' \\\n  -H 'Content-Type: application/json' \\\n  -d '{\n    \"from\": \"12345\",\n    \"guests\": [67890, 54321],\n    \"tasks_id\": \"98765\",\n    \"lawsuits_id\": \"43210\",\n    \"comments\": \"Preparar documentação para audiência preliminar e revisar argumentos principais\",\n    \"start_date\": \"29/05/2025\",\n    \"start_time\": \"14:30\",\n    \"end_date\": \"29/05/2025\",\n    \"end_time\": \"16:00\",\n    \"date_deadline\": \"05/06/2025\",\n    \"local\": \"Sala de reuniões - 3º andar\",\n    \"urgent\": true,\n    \"important\": true,\n    \"display_schedule\": true\n  }'\n```",
+          "security": [
+            {
+              "BearerAuth": []
+            }
+          ],
+          "requestBody": {
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "from",
+                    "tasks_id",
+                    "lawsuits_id",
+                    "start_date",
+                    "guests"
+                  ],
+                  "example": {
+                    "from": "12345",
+                    "guests": [
+                      67890,
+                      54321
+                    ],
+                    "tasks_id": "98765",
+                    "lawsuits_id": "43210",
+                    "comments": "Preparar documentação para audiência preliminar e revisar argumentos principais",
+                    "start_date": "29/05/2025",
+                    "start_time": "14:30",
+                    "end_date": "29/05/2025",
+                    "end_time": "16:00",
+                    "date_deadline": "05/06/2025",
+                    "local": "Sala de reuniões - 3º andar",
+                    "urgent": true,
+                    "important": true,
+                    "display_schedule": true,
+                    "date": "30/06/2025",
+                    "folder": "Pasta 123",
+                    "protocol_number": "PROT-2025-001",
+                    "process_number": "0123456-78.2025.8.26.0100"
+                  },
+                  "x-examples": {
+                    "example-1": {
+                      "from": "12345",
+                      "guests": [
+                        67890,
+                        54321
+                      ],
+                      "tasks_id": "98765",
+                      "lawsuits_id": "43210",
+                      "comments": "Preparar documentação para audiência preliminar e revisar argumentos principais",
+                      "start_date": "29/05/2025",
+                      "start_time": "14:30",
+                      "end_date": "29/05/2025",
+                      "end_time": "16:00",
+                      "date_deadline": "05/06/2025",
+                      "local": "Sala de reuniões - 3º andar",
+                      "urgent": true,
+                      "important": true,
+                      "display_schedule": true,
+                      "date": "30/06/2025",
+                      "folder": "Pasta 123",
+                      "protocol_number": "PROT-2025-001",
+                      "process_number": "0123456-78.2025.8.26.0100"
+                    }
+                  },
+                  "properties": {
+                    "from": {
+                      "type": "string",
+                      "description": "ID of the user creating the task"
+                    },
+                    "guests": {
+                      "type": "array",
+                      "items": {
+                        "type": "integer"
+                      },
+                      "description": "List of user IDs to be added as guests"
+                    },
+                    "tasks_id": {
+                      "type": "string",
+                      "description": "ID of the task type"
+                    },
+                    "lawsuits_id": {
+                      "type": "string",
+                      "description": "ID of the lawsuit associated with the task"
+                    },
+                    "comments": {
+                      "type": "string",
+                      "description": "Additional details about the task, including specific instructions, context or relevant information for its execution"
+                    },
+                    "start_date": {
+                      "type": "string",
+                      "description": "Data do compromisso no formato DD/MM/YYYY"
+                    },
+                    "start_time": {
+                      "type": "string",
+                      "description": "Hora do compromisso no formato HH:MM"
+                    },
+                    "end_date": {
+                      "type": "string",
+                      "description": "Fim do compromisso no formato DD/MM/YYYY"
+                    },
+                    "end_time": {
+                      "type": "string",
+                      "description": "Hora do encerramento no formato HH:MM"
+                    },
+                    "date_deadline": {
+                      "type": "string",
+                      "description": "Prazo fatal no formato DD/MM/YYYY"
+                    },
+                    "local": {
+                      "type": "string",
+                      "description": "Local do compromisso"
+                    },
+                    "urgent": {
+                      "type": "boolean",
+                      "description": "Indicates if the appointment is urgent"
+                    },
+                    "important": {
+                      "type": "boolean",
+                      "description": "Indicates if the appointment is important"
+                    },
+                    "display_schedule": {
+                      "type": "boolean",
+                      "description": "Indica se o compromisso deve ser mostrado na agenda"
+                    },
+                    "date": {
+                      "type": "string",
+                      "description": "Optional date in DD/MM/YYYY format"
+                    },
+                    "folder": {
+                      "type": "string",
+                      "description": "Optional folder information"
+                    },
+                    "protocol_number": {
+                      "type": "string",
+                      "description": "Optional protocol number"
+                    },
+                    "process_number": {
+                      "type": "string",
+                      "description": "Optional process number"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "responses": {
+            "201": {
+              "description": "Task created successfully",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "success": {
+                          "type": "boolean",
+                          "description": "Indicates if the operation was successful"
+                        },
+                        "posts_id": {
+                          "type": "integer",
+                          "description": "ID of the created task"
+                        }
+                      }
+                    },
+                    "example": [
+                      {
+                        "success": true,
+                        "posts_id": 128712976
+                      }
+                    ]
+                  }
+                }
+              }
+            },
+            "400": {
+              "description": "Invalid request (e.g., missing required fields)"
+            },
+            "401": {
+              "description": "Unauthorized (invalid or missing token)"
+            },
+            "500": {
+              "description": "Internal server error"
+            }
+          }
+        }
+      },
+      "/history/{lawsuit_id}/": {
+        "get": {
+          "tags": [
+            "Lawsuits"
+          ],
+          "summary": "List the latest tasks of a lawsuit",
+          "description": "List the tasks associated with a lawsuit, with optional filtering by status (pending or completed).\n\nExample:\n```bash\ncurl -X GET 'https://app.advbox.com.br/api/v1/history/123?status=pending' \\\n  -H 'Accept: application/json' \\\n  -H 'Content-Type: application/json' \\\n  -H 'Authorization: Bearer your_token_here'\\\n```",
+          "security": [
+            {
+              "BearerAuth": []
+            }
+          ],
+          "parameters": [
+            {
+              "in": "path",
+              "name": "lawsuit_id",
+              "required": true,
+              "schema": {
+                "type": "integer"
+              },
+              "description": "Lawsuit ID"
+            },
+            {
+              "in": "query",
+              "name": "status",
+              "required": false,
+              "schema": {
+                "type": "string",
+                "enum": [
+                  "pending",
+                  "completed"
+                ]
+              },
+              "description": "Task status (pending or completed)"
+            },
+            {
+              "in": "query",
+              "name": "limit",
+              "required": false,
+              "schema": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 100
+              },
+              "description": "Number of items in the response, between 1 and 100."
+            },
+            {
+              "in": "query",
+              "name": "offset",
+              "required": false,
+              "schema": {
+                "type": "integer"
+              },
+              "description": "Number of items to skip before starting the response (pagination)."
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "OK"
+            },
+            "400": {
+              "description": "Invalid request (e.g., malformed ID)"
+            },
+            "401": {
+              "description": "Unauthenticated"
+            },
+            "404": {
+              "description": "Not found"
+            }
+          }
+        }
+      },
+      "/movements/{lawsuit_id}": {
+        "get": {
+          "tags": [
+            "Lawsuits"
+          ],
+          "summary": "List the movements of a lawsuit",
+          "description": "List the movements associated with a specific lawsuit.\n",
+          "security": [
+            {
+              "BearerAuth": []
+            }
+          ],
+          "parameters": [
+            {
+              "in": "path",
+              "name": "lawsuit_id",
+              "required": true,
+              "schema": {
+                "type": "integer"
+              },
+              "description": "The unique ID of the lawsuit."
+            },
+            {
+              "in": "query",
+              "name": "origin",
+              "required": false,
+              "schema": {
+                "type": "string",
+                "enum": [
+                  "TRIBUNAL",
+                  "MANUAL"
+                ]
+              },
+              "description": "Filter movements by origin (TRIBUNAL or MANUAL)"
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "List of lawsuit movements",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "movement_id": {
+                          "type": "integer",
+                          "example": 456
+                        },
+                        "date": {
+                          "type": "string",
+                          "format": "date",
+                          "example": "2025-01-31"
+                        },
+                        "description": {
+                          "type": "string",
+                          "example": "Audiência marcada para 15/02/2025"
+                        },
+                        "type": {
+                          "type": "string",
+                          "example": "Audiência"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "400": {
+              "description": "Invalid request (e.g., malformed ID)"
+            },
+            "404": {
+              "description": "Movements not found"
+            }
+          }
+        }
+      },
+      "/lawsuits/movement": {
+        "post": {
+          "tags": [
+            "Lawsuits"
+          ],
+          "operationId": "createMovement",
+          "summary": "Create a new manual movement",
+          "description": "Create a new manual movement for a lawsuit.\n\nExample:\n```bash\ncurl -X POST 'https://app.advbox.com.br/api/v1/lawsuits/movement' \\\n  -H 'Accept: application/json' \\\n  -H 'Authorization: Bearer your_token_here' \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"lawsuit_id\": 123, \"date\": \"25/06/2025\", \"description\": \"Audiência de conciliação agendada\"}'\n```",
+          "security": [
+            {
+              "BearerAuth": []
+            }
+          ],
+          "requestBody": {
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "lawsuit_id",
+                    "date",
+                    "description"
+                  ],
+                  "example": {
+                    "lawsuit_id": 123,
+                    "date": "25/06/2025",
+                    "description": "Audiência de conciliação agendada"
+                  },
+                  "properties": {
+                    "lawsuit_id": {
+                      "type": "integer",
+                      "description": "ID do processo"
+                    },
+                    "date": {
+                      "type": "string",
+                      "description": "Data do andamento no formato DD/MM/YYYY",
+                      "pattern": "^\\d{2}/\\d{2}/\\d{4}$"
+                    },
+                    "description": {
+                      "type": "string",
+                      "description": "Descrição do andamento"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "responses": {
+            "201": {
+              "description": "Andamento criado com sucesso",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object",
+                    "properties": {
+                      "success": {
+                        "type": "boolean",
+                        "example": true
+                      },
+                      "movement_id": {
+                        "type": "integer",
+                        "example": 789
+                      }
+                    }
+                  },
+                  "example": {
+                    "success": true,
+                    "movement_id": 789
+                  }
+                }
+              }
+            },
+            "400": {
+              "description": "Dados inválidos"
+            },
+            "401": {
+              "description": "Não autenticado"
+            },
+            "404": {
+              "description": "Processo não encontrado"
+            },
+            "500": {
+              "description": "Erro interno do servidor"
+            }
+          }
+        }
+      },
+      "/last_movements": {
+        "get": {
+          "tags": [
+            "Lawsuits"
+          ],
+          "summary": "Retrieve the latest movements across lawsuits.",
+          "description": "Retrieve the latest movements across all lawsuits.\n\nExample:\n```bash\ncurl -X GET 'https://app.advbox.com.br/api/v1/last_movements' \\\n  -H 'Accept: application/json' \\\n  -H 'Content-Type: application/json' \\\n  -H 'Authorization: Bearer your_token_here'\\\n```",
+          "security": [
+            {
+              "BearerAuth": []
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "Latest movements found",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "integer",
+                          "example": 1
+                        },
+                        "lawsuit_id": {
+                          "type": "integer",
+                          "example": 123
+                        },
+                        "date": {
+                          "type": "string",
+                          "format": "date",
+                          "example": "2025-01-31"
+                        },
+                        "description": {
+                          "type": "string",
+                          "example": "Movement description"
+                        },
+                        "type": {
+                          "type": "string",
+                          "example": "Movement type"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "400": {
+              "description": "Invalid request"
+            },
+            "404": {
+              "description": "Not found"
+            }
+          }
+        }
+      },
+      "/settings": {
+        "get": {
+          "tags": [
+            "Users"
+          ],
+          "summary": "Get account settings",
+          "description": "Retrieve the account settings and configuration.\n\nExample:\n```bash\ncurl -X GET 'https://app.advbox.com.br/api/v1/settings' \\\n  -H 'Accept: application/json' \\\n  -H 'Content-Type: application/json' \\\n  -H 'Authorization: Bearer your_token_here'\\\n```",
+          "security": [
+            {
+              "BearerAuth": []
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "OK",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object",
+                    "properties": {
+                      "account": {
+                        "type": "object",
+                        "description": "Account settings and configuration details"
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "401": {
+              "description": "Unauthorized (invalid or missing token)"
+            },
+            "500": {
+              "description": "Internal server error"
+            }
+          }
+        }
+      }
+    },
+    "x-internal": false,
+    "servers": [
+      {
+        "url": "https://app.advbox.com.br/api/v1"
+      }
+    ]
+  },
+  "customOptions": {}
+};
+  url = options.swaggerUrl || url
+  var urls = options.swaggerUrls
+  var customOptions = options.customOptions
+  var spec1 = options.swaggerDoc
+  var swaggerOptions = {
+    spec: spec1,
+    url: url,
+    urls: urls,
+    dom_id: '#swagger-ui',
+    deepLinking: true,
+    presets: [
+      SwaggerUIBundle.presets.apis,
+      SwaggerUIStandalonePreset
+    ],
+    plugins: [
+      SwaggerUIBundle.plugins.DownloadUrl
+    ],
+    layout: "StandaloneLayout"
+  }
+  for (var attrname in customOptions) {
+    swaggerOptions[attrname] = customOptions[attrname];
+  }
+  var ui = SwaggerUIBundle(swaggerOptions)
+
+  if (customOptions.oauth) {
+    ui.initOAuth(customOptions.oauth)
+  }
+
+  if (customOptions.preauthorizeApiKey) {
+    const key = customOptions.preauthorizeApiKey.authDefinitionKey;
+    const value = customOptions.preauthorizeApiKey.apiKeyValue;
+    if (!!key && !!value) {
+      const pid = setInterval(() => {
+        const authorized = ui.preauthorizeApiKey(key, value);
+        if(!!authorized) clearInterval(pid);
+      }, 500)
+
+    }
+  }
+
+  if (customOptions.authAction) {
+    ui.authActions.authorize(customOptions.authAction)
+  }
+
+  window.ui = ui
+}

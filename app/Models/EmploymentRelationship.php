@@ -25,6 +25,7 @@ class EmploymentRelationship extends Model
         'cargo',
         'documentos',
         'observacoes',
+        'status_empresa',
     ];
 
     protected $casts = [

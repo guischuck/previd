@@ -53,8 +53,6 @@ class AdvboxService
             
             // 2. Criar a tarefa associada ao processo
             $taskData['lawsuits_id'] = $lawsuitId;
-            $taskData['protocol_number'] = $protocolNumber;
-            $taskData['process_number'] = $protocolNumber;
             
             return $this->createTask($taskData);
             
@@ -79,12 +77,23 @@ class AdvboxService
                 throw new \Exception('API key não configurada');
             }
 
+            // Validar campos obrigatórios
+            $requiredFields = ['from', 'guests', 'tasks_id', 'lawsuits_id'];
+            foreach ($requiredFields as $field) {
+                if (empty($data[$field])) {
+                    return [
+                        'success' => false,
+                        'error' => "Campo obrigatório não informado: {$field}"
+                    ];
+                }
+            }
+
             // Garantir que todos os campos obrigatórios estejam presentes
             $taskData = array_merge([
                 'from' => null,
                 'guests' => [],
                 'tasks_id' => null,
-                'lawsuits_id' => $data['lawsuits_id'] ?? null,
+                'lawsuits_id' => null,
                 'comments' => $data['comments'] ?? '',
                 'start_date' => now()->format('d/m/Y'),
                 'start_time' => now()->format('H:i'),
@@ -94,11 +103,7 @@ class AdvboxService
                 'local' => null,
                 'urgent' => false,
                 'important' => false,
-                'display_schedule' => true,
-                'date' => now()->format('d/m/Y'),
-                'folder' => null,
-                'protocol_number' => $data['protocol_number'] ?? null,
-                'process_number' => $data['process_number'] ?? null
+                'display_schedule' => true
             ], $data);
 
             Log::info('Criando tarefa no AdvBox', [
@@ -216,11 +221,22 @@ class AdvboxService
             ])->get($this->baseUrl . '/settings');
 
             if ($response->successful()) {
+                $data = $response->json();
+                
+                Log::info('Configurações obtidas com sucesso do AdvBox', [
+                    'data' => $data
+                ]);
+
                 return [
                     'success' => true,
-                    'data' => $response->json()
+                    'data' => $data
                 ];
             }
+
+            Log::error('Erro ao obter configurações do AdvBox', [
+                'status' => $response->status(),
+                'response' => $response->json()
+            ]);
 
             return [
                 'success' => false,
@@ -228,9 +244,129 @@ class AdvboxService
             ];
 
         } catch (\Exception $e) {
+            Log::error('Exceção ao obter configurações do AdvBox', [
+                'message' => $e->getMessage()
+            ]);
+
             return [
                 'success' => false,
                 'error' => 'Erro ao obter configurações: ' . $e->getMessage()
+            ];
+        }
+    }
+
+    public function getUsers()
+    {
+        try {
+            if (!$this->apiKey) {
+                throw new \Exception('API key não configurada');
+            }
+
+            Log::info('Buscando usuários no AdvBox via settings');
+
+            $response = Http::withHeaders([
+                'Accept' => 'application/json',
+                'Authorization' => 'Bearer ' . $this->apiKey
+            ])->get($this->baseUrl . '/settings');
+
+            if ($response->successful()) {
+                $data = $response->json();
+                
+                // Extrair usuários das configurações
+                $users = [];
+                if (isset($data['user']) && isset($data['user']['id'])) {
+                    $users[] = $data['user'];
+                }
+                
+                if (isset($data['company']) && isset($data['company']['users'])) {
+                    $users = array_merge($users, $data['company']['users']);
+                }
+                
+                Log::info('Usuários encontrados no AdvBox', [
+                    'found' => count($users),
+                    'data' => $users
+                ]);
+
+                return [
+                    'success' => true,
+                    'data' => $users
+                ];
+            }
+
+            Log::error('Erro ao buscar usuários no AdvBox', [
+                'status' => $response->status(),
+                'response' => $response->json()
+            ]);
+
+            return [
+                'success' => false,
+                'error' => 'Erro ao buscar usuários: ' . ($response->json()['message'] ?? 'Erro desconhecido')
+            ];
+
+        } catch (\Exception $e) {
+            Log::error('Exceção ao buscar usuários no AdvBox', [
+                'message' => $e->getMessage()
+            ]);
+
+            return [
+                'success' => false,
+                'error' => 'Erro ao buscar usuários: ' . $e->getMessage()
+            ];
+        }
+    }
+
+    public function getTasks()
+    {
+        try {
+            if (!$this->apiKey) {
+                throw new \Exception('API key não configurada');
+            }
+
+            Log::info('Buscando tarefas no AdvBox via settings');
+
+            $response = Http::withHeaders([
+                'Accept' => 'application/json',
+                'Authorization' => 'Bearer ' . $this->apiKey
+            ])->get($this->baseUrl . '/settings');
+
+            if ($response->successful()) {
+                $data = $response->json();
+                
+                // Extrair tarefas das configurações
+                $tasks = [];
+                if (isset($data['tasks']) && is_array($data['tasks'])) {
+                    $tasks = $data['tasks'];
+                }
+                
+                Log::info('Tarefas encontradas no AdvBox', [
+                    'found' => count($tasks),
+                    'data' => $tasks
+                ]);
+
+                return [
+                    'success' => true,
+                    'data' => $tasks
+                ];
+            }
+
+            Log::error('Erro ao buscar tarefas no AdvBox', [
+                'status' => $response->status(),
+                'response' => $response->json()
+            ]);
+
+            return [
+                'success' => false,
+                'error' => 'Erro ao buscar tarefas: ' . ($response->json()['message'] ?? 'Erro desconhecido')
+            ];
+
+        } catch (\Exception $e) {
+            Log::error('Exceção ao buscar tarefas no AdvBox', [
+                'message' => $e->getMessage()
+            ]);
+
+            return [
+                'success' => false,
+                'error' => 'Erro ao buscar tarefas: ' . $e->getMessage()
             ];
         }
     }

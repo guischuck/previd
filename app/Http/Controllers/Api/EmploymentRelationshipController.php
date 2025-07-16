@@ -8,11 +8,39 @@ use Illuminate\Http\Request;
 
 class EmploymentRelationshipController extends Controller
 {
+    public function store(Request $request)
+    {
+        $data = $request->only([
+            'case_id',
+            'employer_name',
+            'employer_cnpj',
+            'start_date',
+            'end_date',
+            'cargo',
+            'documentos',
+            'observacoes',
+            'status_empresa',
+            'is_active'
+        ]);
+        
+        // Log para debug
+        \Log::info('Criando Employment Relationship', [
+            'data_recebida' => $data,
+            'request_all' => $request->all()
+        ]);
+        
+        $relationship = EmploymentRelationship::create($data);
+        
+        return response()->json([
+            'success' => true,
+            'data' => $relationship
+        ]);
+    }
     public function update(Request $request, $id)
     {
         $relationship = EmploymentRelationship::findOrFail($id);
         $data = $request->only([
-            'start_date', 'end_date', 'cargo', 'documentos', 'observacoes', 'is_active'
+            'start_date', 'end_date', 'cargo', 'documentos', 'observacoes', 'is_active', 'status_empresa'
         ]);
         
         // Log para debug
@@ -61,4 +89,46 @@ class EmploymentRelationshipController extends Controller
             'case_id' => $case ? $case->id : null
         ]);
     }
-} 
+    
+    public function destroy($id)
+    {
+        $relationship = EmploymentRelationship::findOrFail($id);
+        
+        // Log para debug
+        \Log::info('Removendo Employment Relationship', [
+            'id' => $id,
+            'dados' => $relationship->toArray()
+        ]);
+        
+        // Armazenar o caso antes de excluir o relacionamento
+        $case = $relationship->legalCase;
+        
+        // Excluir o relacionamento
+        $relationship->delete();
+        
+        // Atualizar status do caso baseado no progresso da coleta
+        $caseProgress = null;
+        $caseStatus = null;
+        
+        if ($case) {
+            $case->updateStatusBasedOnProgress();
+            $refreshedCase = $case->fresh();
+            $caseProgress = $refreshedCase->collection_progress;
+            $caseStatus = $refreshedCase->status;
+            
+            \Log::info('Status do caso atualizado após remoção de vínculo', [
+                'case_id' => $case->id,
+                'novo_status' => $caseStatus,
+                'progresso' => $caseProgress
+            ]);
+        }
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'Vínculo removido com sucesso',
+            'case_progress' => $caseProgress,
+            'case_status' => $caseStatus,
+            'case_id' => $case ? $case->id : null
+        ]);
+    }
+}

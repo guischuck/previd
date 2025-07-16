@@ -39,11 +39,57 @@ class TestAdvboxIntegration extends Command
             return 1;
         }
 
-        // 2. Testar busca de processo
+        // 2. Testar busca de usuários
+        $this->info('2. Testando busca de usuários via settings...');
+        $users = $advboxService->getUsers();
+        
+        if ($users['success']) {
+            $data = $users['data'];
+            $this->info("✓ Usuários encontrados: " . count($data) . " usuário(s)");
+            
+            if (!empty($data)) {
+                $this->table(['ID', 'Nome', 'Email'], array_map(function($user) {
+                    return [
+                        $user['id'] ?? 'N/A',
+                        $user['name'] ?? 'N/A',
+                        $user['email'] ?? 'N/A'
+                    ];
+                }, array_slice($data, 0, 5))); // Mostrar apenas os primeiros 5
+            }
+        } else {
+            $this->error('✗ Erro ao buscar usuários: ' . $users['error']);
+        }
+
+        // 3. Testar busca de tarefas
+        $this->info('3. Testando busca de tarefas via settings...');
+        $tasks = $advboxService->getTasks();
+        
+        if ($tasks['success']) {
+            $data = $tasks['data'];
+            $this->info("✓ Tarefas encontradas: " . count($data) . " tarefa(s)");
+            
+            if (!empty($data)) {
+                // Mostrar a estrutura real da primeira tarefa
+                $this->info("Estrutura da primeira tarefa:");
+                $this->line(json_encode($data[0], JSON_PRETTY_PRINT));
+                
+                $this->table(['ID', 'Título', 'Descrição'], array_map(function($task) {
+                    return [
+                        $task['id'] ?? 'N/A',
+                        $task['title'] ?? $task['type'] ?? $task['name'] ?? 'N/A',
+                        substr($task['description'] ?? $task['desc'] ?? 'N/A', 0, 50) . '...'
+                    ];
+                }, array_slice($data, 0, 5))); // Mostrar apenas as primeiras 5
+            }
+        } else {
+            $this->error('✗ Erro ao buscar tarefas: ' . $tasks['error']);
+        }
+
+        // 4. Testar busca de processo
         $protocol = $this->option('protocol');
         
         if ($protocol) {
-            $this->info("2. Testando busca de processo: {$protocol}");
+            $this->info("4. Testando busca de processo: {$protocol}");
             $lawsuit = $advboxService->searchLawsuit($protocol);
             
             if ($lawsuit['success']) {
@@ -59,8 +105,8 @@ class TestAdvboxIntegration extends Command
                         ]
                     ]);
                     
-                    // 3. Testar criação de tarefa
-                    $this->info('3. Testando criação de tarefa...');
+                    // 5. Testar criação de tarefa
+                    $this->info('5. Testando criação de tarefa...');
                     $taskResult = $advboxService->createTaskByProtocol($protocol, [
                         'comments' => 'Teste de integração - ' . now()->format('d/m/Y H:i:s'),
                         'urgent' => false,

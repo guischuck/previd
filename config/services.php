@@ -54,4 +54,9 @@ return [
         ],
     ],
 
+    'advbox' => [
+        'api_key' => env('ADVBOX_API_KEY'),
+        'base_url' => env('ADVBOX_BASE_URL', 'https://app.advbox.com.br/api/v1'),
+    ],
+
 ];

@@ -8,20 +8,77 @@ use Illuminate\Http\Request;
 
 class TaskController extends Controller
 {
-    public function update(Request $request, Task $task)
+    /**
+     * Lista de tarefas para o AdvBox
+     */
+    public function index(Request $request)
     {
-        $validated = $request->validate([
-            'status' => 'required|in:pending,in_progress,completed,cancelled',
-            'completed_at' => 'nullable|date',
-            'notes' => 'nullable|string',
-        ]);
+        // Filtros opcionais
+        $query = Task::query();
 
-        $task->update($validated);
+        // Filtrar por nome (opcional)
+        if ($request->has('name')) {
+            $query->where('name', 'like', '%' . $request->input('name') . '%');
+        }
+
+        // Filtrar por categoria (opcional)
+        if ($request->has('category')) {
+            $query->where('category', $request->input('category'));
+        }
+
+        // Ordenar por nome
+        $query->orderBy('name');
+
+        // Paginação opcional
+        $perPage = $request->input('per_page', 50);
+        $tasks = $query->paginate($perPage);
+
+        // Transformar para o formato esperado
+        return response()->json(
+            $tasks->map(function ($task) {
+                return [
+                    'id' => $task->id,
+                    'name' => $task->name,
+                    'category' => $task->category ?? null,
+                    'description' => $task->description ?? null,
+                ];
+            })
+        );
+    }
+
+    /**
+     * Detalhes de uma tarefa específica
+     */
+    public function show($taskId)
+    {
+        $task = Task::findOrFail($taskId);
 
         return response()->json([
-            'success' => true,
-            'message' => 'Tarefa atualizada com sucesso!',
-            'task' => $task->fresh(),
+            'id' => $task->id,
+            'name' => $task->name,
+            'category' => $task->category ?? null,
+            'description' => $task->description ?? null,
         ]);
+    }
+
+    /**
+     * Criar uma nova tarefa
+     */
+    public function store(Request $request)
+    {
+        $validatedData = $request->validate([
+            'name' => 'required|string|max:255',
+            'category' => 'nullable|string|max:100',
+            'description' => 'nullable|string',
+        ]);
+
+        $task = Task::create($validatedData);
+
+        return response()->json([
+            'id' => $task->id,
+            'name' => $task->name,
+            'category' => $task->category ?? null,
+            'description' => $task->description ?? null,
+        ], 201);
     }
 } 
