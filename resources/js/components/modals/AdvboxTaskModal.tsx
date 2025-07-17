@@ -47,14 +47,14 @@ export default function AdvboxTaskModal({
     const [error, setError] = useState<string | null>(null);
 
     // Form state
-    const [selectedUsers, setSelectedUsers] = useState<number[]>([]);
-    const [selectedTask, setSelectedTask] = useState<string>('');
+    const [userName, setUserName] = useState<string>('');
+    const [taskName, setTaskName] = useState<string>('');
     const [taskComments, setTaskComments] = useState<string>('');
     const [taskDate, setTaskDate] = useState<string>('');
     const [taskDeadline, setTaskDeadline] = useState<string>('');
 
     useEffect(() => {
-        if (isOpen && andamento) {
+        if (isOpen && andamento && andamento.processo) {
             setError(null);
             fetchData();
         }
@@ -83,7 +83,7 @@ export default function AdvboxTaskModal({
             }
 
             // Fetch lawsuit by protocol number
-            if (andamento.processo?.protocolo) {
+            if (andamento?.processo?.protocolo) {
                 console.log('Fetching lawsuit for protocol:', andamento.processo.protocolo);
                 const lawsuitResponse = await axios.get(`/advbox_api.php?endpoint=lawsuits&protocol_number=${andamento.processo.protocolo}`);
                 console.log('Lawsuit response:', lawsuitResponse.data);
@@ -119,9 +119,9 @@ export default function AdvboxTaskModal({
             return;
         }
 
-        if (!selectedTask || selectedUsers.length === 0) {
-            console.error('Missing task or users:', { selectedTask, selectedUsers });
-            toast.error('Selecione uma tarefa e pelo menos um usuário');
+        if (!taskName || !userName) {
+            console.error('Missing task or user name:', { taskName, userName });
+            toast.error('Digite o nome da tarefa e do usuário');
             return;
         }
 
@@ -136,9 +136,9 @@ export default function AdvboxTaskModal({
         setLoading(true);
         try {
             const taskData = {
-                from: selectedUsers[0].toString(),
-                guests: selectedUsers.map(String),
-                tasks_id: selectedTask,
+                from: userName,
+                guests: [userName],
+                task_name: taskName,
                 lawsuits_id: lawsuit.id.toString(),
                 comments: taskComments || `Tarefa para o processo ${lawsuit.protocol_number}`,
                 start_date: formatDate(taskDate) || formatDate(new Date().toISOString().split('T')[0]),
@@ -186,58 +186,7 @@ export default function AdvboxTaskModal({
         }
     };
 
-    const handleCreateMovement = async () => {
-        if (!lawsuit) {
-            toast.error('Processo não encontrado no AdvBox');
-            return;
-        }
 
-        // Formatar datas
-        const formatDate = (date: string) => {
-            if (!date) return '';
-            const [year, month, day] = date.split('-');
-            return `${day}/${month}/${year}`;
-        };
-
-        console.log('Starting movement creation...');
-        setLoading(true);
-        try {
-            const movementData = {
-                lawsuit_id: lawsuit.id,
-                date: formatDate(taskDate) || formatDate(new Date().toISOString().split('T')[0]),
-                description: taskComments || `Movimento para o processo ${lawsuit.protocol_number}`,
-                type: 'MANUAL'
-            };
-
-            console.log('Movement data to be sent:', movementData);
-
-            const response = await axios.post('/advbox_api.php?endpoint=movement', {
-                data: movementData
-            }, {
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            });
-
-            console.log('API Response:', response.data);
-
-            if (response.data.success) {
-                console.log('Movement created successfully');
-                toast.success('Movimento criado com sucesso no AdvBox');
-                onClose();
-            } else {
-                console.error('Movement creation failed:', response.data);
-                toast.error('Erro ao criar movimento no AdvBox: ' + response.data.error);
-            }
-        } catch (error: any) {
-            console.error('Error creating movement:', error);
-            console.error('Error details:', error.response?.data);
-            toast.error(error.response?.data?.error || 'Erro ao criar movimento');
-        } finally {
-            console.log('Movement creation finished');
-            setLoading(false);
-        }
-    };
 
     // Se houver erro, mostrar tela de erro
     if (error) {
@@ -280,7 +229,7 @@ export default function AdvboxTaskModal({
                 <DialogHeader>
                     <DialogTitle>Adicionar no AdvBox</DialogTitle>
                     <DialogDescription>
-                        Adicione uma tarefa ou movimento para o processo {andamento.processo?.protocolo}
+                        Adicione uma tarefa ou movimento para o processo {andamento?.processo?.protocolo || 'N/A'}
                     </DialogDescription>
                 </DialogHeader>
 
@@ -294,11 +243,11 @@ export default function AdvboxTaskModal({
                         <div className="grid grid-cols-2 gap-4 bg-muted/20 p-4 rounded-lg">
                             <div>
                                 <div className="text-sm font-medium text-muted-foreground">Nome</div>
-                                <div>{andamento.processo?.nome}</div>
+                                <div>{andamento?.processo?.nome || 'N/A'}</div>
                             </div>
                             <div>
                                 <div className="text-sm font-medium text-muted-foreground">Protocolo</div>
-                                <div>{andamento.processo?.protocolo}</div>
+                                <div>{andamento?.processo?.protocolo || 'N/A'}</div>
                             </div>
                         </div>
 
@@ -318,71 +267,28 @@ export default function AdvboxTaskModal({
                             )}
                         </div>
 
-                        {/* Users Multiselect */}
+                        {/* User Name Input */}
                         <div>
                             <label className="flex items-center gap-2 mb-2 text-sm font-medium">
-                                <Users className="h-4 w-4" /> Usuários
+                                <Users className="h-4 w-4" /> Nome do Usuário
                             </label>
-                            <Select 
-                                value={selectedUsers.length > 0 ? selectedUsers[0].toString() : ''} 
-                                onValueChange={(value: string) => {
-                                    // Para simplificar, vamos usar apenas um usuário por enquanto
-                                    setSelectedUsers([parseInt(value)]);
-                                }}
-                                disabled={users.length === 0}
-                            >
-                                <SelectTrigger>
-                                    <SelectValue placeholder={users.length === 0 ? "Nenhum usuário disponível" : "Selecione um usuário"} />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {users.length === 0 ? (
-                                        <div className="p-2 text-sm text-muted-foreground">
-                                            Não há usuários disponíveis
-                                        </div>
-                                    ) : (
-                                        users.map((user) => (
-                                            <SelectItem 
-                                                key={user.id} 
-                                                value={user.id.toString()}
-                                            >
-                                                {user.name}
-                                            </SelectItem>
-                                        ))
-                                    )}
-                                </SelectContent>
-                            </Select>
+                            <Input 
+                                placeholder="Digite o nome do usuário"
+                                value={userName}
+                                onChange={(e) => setUserName(e.target.value)}
+                            />
                         </div>
 
-                        {/* Task or Movement Type */}
+                        {/* Task Name Input */}
                         <div>
                             <label className="flex items-center gap-2 mb-2 text-sm font-medium">
-                                <FileText className="h-4 w-4" /> Tipo
+                                <FileText className="h-4 w-4" /> Nome da Tarefa
                             </label>
-                            <Select 
-                                value={selectedTask} 
-                                onValueChange={setSelectedTask}
-                                disabled={tasks.length === 0}
-                            >
-                                <SelectTrigger>
-                                    <SelectValue placeholder={tasks.length === 0 ? "Nenhuma tarefa disponível" : "Selecione uma tarefa"} />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {tasks.length === 0 ? (
-                                        <div className="p-2 text-sm text-muted-foreground">
-                                            Não há tarefas disponíveis
-                                        </div>
-                                    ) : (
-                                        tasks.map((task) => (
-                                            <SelectItem 
-                                                key={task.id} 
-                                                value={task.id.toString()}
-                                            >
-                                                {task.name}
-                                            </SelectItem>
-                                        ))
-                                    )}
-                                </SelectContent>
-                            </Select>
+                            <Input 
+                                placeholder="Digite o nome da tarefa"
+                                value={taskName}
+                                onChange={(e) => setTaskName(e.target.value)}
+                            />
                         </div>
 
                         {/* Comments */}
@@ -437,17 +343,6 @@ export default function AdvboxTaskModal({
                                     <Loader2 className="h-4 w-4 animate-spin mr-2" />
                                 ) : null}
                                 Criar Tarefa
-                            </Button>
-                            <Button 
-                                variant="secondary"
-                                onClick={handleCreateMovement}
-                                disabled={loading || !lawsuit}
-                                title={!lawsuit ? "Processo não encontrado no AdvBox" : ""}
-                            >
-                                {loading ? (
-                                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                                ) : null}
-                                Criar Movimento
                             </Button>
                         </div>
                     </div>

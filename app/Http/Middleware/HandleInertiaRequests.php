@@ -6,6 +6,7 @@ use Illuminate\Foundation\Inspiring;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 use Tighten\Ziggy\Ziggy;
+use App\Models\HistoricoSituacao;
 
 class HandleInertiaRequests extends Middleware
 {
@@ -39,6 +40,16 @@ class HandleInertiaRequests extends Middleware
     {
         [$message, $author] = str(Inspiring::quotes()->random())->explode('-');
 
+        // Calcular estatísticas de andamentos não vistos para usuários autenticados
+        $stats = null;
+        if ($request->user() && $request->user()->company_id) {
+            $stats = [
+                'nao_vistos' => HistoricoSituacao::where('id_empresa', $request->user()->company_id)
+                    ->where('visto', false)
+                    ->count()
+            ];
+        }
+
         return [
             ...parent::share($request),
             'name' => config('app.name'),
@@ -56,6 +67,7 @@ class HandleInertiaRequests extends Middleware
                     'can_manage_users' => $request->user()->canManageUsers(),
                 ] : null,
             ],
+            'stats' => $stats,
             'ziggy' => fn (): array => [
                 ...(new Ziggy)->toArray(),
                 'location' => $request->url(),

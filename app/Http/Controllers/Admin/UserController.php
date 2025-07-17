@@ -70,7 +70,7 @@ class UserController extends Controller
             'user' => $user,
             'stats' => [
                 'cases_count' => $user->cases()->count(),
-                'active_cases' => $user->cases()->whereIn('status', ['pendente', 'em_coleta', 'aguarda_peticao'])->count(),
+                'active_cases' => $user->cases()->whereIn('status', ['pendente', 'em_coleta'])->count(),
                 'completed_cases' => $user->cases()->where('status', 'concluido')->count(),
             ]
         ]);
@@ -121,4 +121,4 @@ class UserController extends Controller
         return redirect()->route('admin.users.index')
             ->with('success', 'Usuário excluído com sucesso!');
     }
-} 
+}

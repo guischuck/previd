@@ -54,6 +54,15 @@ export default function CasesIndex({ cases, users, statuses, filters }: CasesInd
     const [searchTerm, setSearchTerm] = useState(filters.search || '');
     const [casesData, setCasesData] = useState(cases.data);
     const [viewMode, setViewMode] = useState<'list' | 'kanban'>('kanban');
+    const [expandedColumns, setExpandedColumns] = useState<Record<string, boolean>>({});
+
+    // Função para alternar a expansão de uma coluna
+    const toggleColumn = (statusKey: string) => {
+        setExpandedColumns(prev => ({
+            ...prev,
+            [statusKey]: !prev[statusKey]
+        }));
+    };
 
     // Listener para atualizações de progresso em tempo real
     useEffect(() => {
@@ -84,7 +93,6 @@ export default function CasesIndex({ cases, users, statuses, filters }: CasesInd
         const statusMap: Record<string, string> = {
             pendente: 'Pendente',
             em_coleta: 'Em Coleta',
-            aguarda_peticao: 'Aguarda Petição',
             protocolado: 'Protocolado',
             concluido: 'Concluído',
             rejeitado: 'Rejeitado',
@@ -100,8 +108,7 @@ export default function CasesIndex({ cases, users, statuses, filters }: CasesInd
                 return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
             case 'em_coleta':
                 return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
-            case 'aguarda_peticao':
-                return 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200';
+
             case 'protocolado':
                 return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200';
             case 'concluido':
@@ -133,20 +140,27 @@ export default function CasesIndex({ cases, users, statuses, filters }: CasesInd
 
     // Organizar casos por status para o Kanban
     const getCasesByStatus = () => {
-        // Apenas colunas até 'concluido'
+        // Apenas 3 colunas principais
         const statusColumns = {
-            pendente: { title: 'Pendente', cases: [] as Case[] },
-            em_coleta: { title: 'Em Coleta', cases: [] as Case[] },
-            aguarda_peticao: { title: 'Aguarda Petição', cases: [] as Case[] },
-            protocolado: { title: 'Protocolado', cases: [] as Case[] },
-            concluido: { title: 'Concluído', cases: [] as Case[] }
+            pendente: { title: 'Pendente', cases: [] as Case[], color: 'bg-yellow-50 border-yellow-200 dark:bg-yellow-900/20 dark:border-yellow-700' },
+            em_coleta: { title: 'Em Coleta', cases: [] as Case[], color: 'bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-700' },
+            concluido: { title: 'Concluído', cases: [] as Case[], color: 'bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-700' }
         };
 
         casesData.forEach(case_ => {
             // Não exibir arquivados em nenhuma visualização
             if (case_.status === 'arquivado') return;
-            if (statusColumns[case_.status as keyof typeof statusColumns]) {
-                statusColumns[case_.status as keyof typeof statusColumns].cases.push(case_);
+            
+            // Mapear status para as 3 colunas principais
+            if (case_.status === 'pendente') {
+                statusColumns.pendente.cases.push(case_);
+            } else if (case_.status === 'em_coleta') {
+                statusColumns.em_coleta.cases.push(case_);
+            } else if (case_.status === 'concluido') {
+                statusColumns.concluido.cases.push(case_);
+            } else if (case_.status === 'protocolado') {
+                // Casos protocolados vão para em_coleta
+                statusColumns.em_coleta.cases.push(case_);
             } else {
                 // Casos com status desconhecido vão para "Pendente"
                 statusColumns.pendente.cases.push(case_);
@@ -299,56 +313,95 @@ export default function CasesIndex({ cases, users, statuses, filters }: CasesInd
                     ) : (
                         /* Kanban View */
                         <div className="space-y-6">
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                                 {Object.entries(statusColumns).map(([statusKey, column]) => (
                                     <div key={statusKey} className="space-y-4">
-                                        <div className="flex items-center justify-between">
-                                            <h3 className="font-semibold text-sm">{column.title}</h3>
-                                            <span className="text-xs bg-muted px-2 py-1 rounded-full">
-                                                {column.cases.length}
-                                            </span>
-                                        </div>
-                                        <div className="space-y-3">
-                                            {column.cases.map((case_) => (
-                                                <Card key={case_.id} className="cursor-pointer hover:shadow-md transition-shadow">
-                                                    <CardContent className="p-4">
-                                                        <div className="space-y-3">
-                                                            <div>
-                                                                <h4 className="font-medium text-sm line-clamp-2">
-                                                                    {case_.client_name}
-                                                                </h4>
-                                                                <p className="text-xs text-muted-foreground">
-                                                                    CPF: {case_.client_cpf}
-                                                                </p>
-                                                            </div>
-                                                            
-                                                            <div className="flex items-center justify-between">
-                                                                <span className="text-xs text-muted-foreground">
-                                                                    {new Date(case_.created_at).toLocaleDateString('pt-BR')}
-                                                                </span>
-                                                                <span
-                                                                    className={`rounded-full px-2 py-1 text-xs font-semibold ${getStatusColor(case_.status)}`}
-                                                                >
-                                                                    {getStatusText(case_.status)}
-                                                                </span>
-                                                            </div>
-
-                                                            <div className="flex items-center gap-2 pt-2 border-t">
-                                                                <Link href={`/cases/${case_.id}`} className="flex-1">
-                                                                    <Button variant="outline" size="sm" className="w-full text-xs">
-                                                                        Ver
-                                                                    </Button>
-                                                                </Link>
-                                                                <Link href={`/cases/${case_.id}/edit`}>
-                                                                    <Button variant="ghost" size="sm" className="text-xs">
-                                                                        Editar
-                                                                    </Button>
-                                                                </Link>
-                                                            </div>
+                                        {/* Header da Coluna */}
+                                        <Card className={`${column.color} border-2`}>
+                                            <CardContent className="p-4">
+                                                <button
+                                                    onClick={() => toggleColumn(statusKey)}
+                                                    className="w-full flex items-center justify-between hover:bg-white/50 dark:hover:bg-white/10 rounded-lg p-3 transition-colors"
+                                                >
+                                                    <div className="flex items-center space-x-3">
+                                                        <div className={`w-3 h-3 rounded-full ${
+                                                            statusKey === 'pendente' ? 'bg-yellow-500' :
+                                                            statusKey === 'em_coleta' ? 'bg-blue-500' :
+                                                            'bg-green-500'
+                                                        }`}></div>
+                                                        <h3 className="font-semibold text-lg text-gray-800 dark:text-gray-200">{column.title}</h3>
+                                                    </div>
+                                                    <div className="flex items-center space-x-2">
+                                                        <span className="bg-white/80 dark:bg-gray-800/80 text-gray-700 dark:text-gray-300 px-3 py-1 rounded-full text-sm font-medium">
+                                                            {column.cases.length}
+                                                        </span>
+                                                        <div className={`transform transition-transform duration-200 ${
+                                                            expandedColumns[statusKey] ? 'rotate-180' : 'rotate-0'
+                                                        }`}>
+                                                            <svg className="w-5 h-5 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                                            </svg>
                                                         </div>
-                                                    </CardContent>
-                                                </Card>
-                                            ))}
+                                                    </div>
+                                                </button>
+                                            </CardContent>
+                                        </Card>
+
+                                        {/* Casos da Coluna */}
+                                        <div className={`transition-all duration-300 ease-in-out overflow-hidden ${
+                                            expandedColumns[statusKey] ? 'max-h-none opacity-100' : 'max-h-0 opacity-0'
+                                        }`}>
+                                            <div className="space-y-3 min-h-[200px]">
+                                                {column.cases.length > 0 ? (
+                                                    column.cases.map((case_) => (
+                                                        <Card key={case_.id} className="hover:shadow-lg dark:hover:shadow-gray-900/50 transition-all duration-200 hover:scale-[1.02] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                                                            <CardContent className="p-4">
+                                                                <div className="space-y-3">
+                                                                    <div>
+                                                                        <h4 className="font-semibold text-gray-900 dark:text-gray-100 line-clamp-2 mb-1">
+                                                                            {case_.client_name}
+                                                                        </h4>
+                                                                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                                                                            CPF: {case_.client_cpf}
+                                                                        </p>
+                                                                    </div>
+                                                                    
+                                                                    <div className="flex items-center justify-between">
+                                                                        <span className="text-xs text-gray-400 dark:text-gray-500">
+                                                                            {new Date(case_.created_at).toLocaleDateString('pt-BR')}
+                                                                        </span>
+                                                                        <span
+                                                                            className={`rounded-full px-2 py-1 text-xs font-semibold ${getStatusColor(case_.status)}`}
+                                                                        >
+                                                                            {getStatusText(case_.status)}
+                                                                        </span>
+                                                                    </div>
+
+                                                                    <div className="flex items-center gap-2 pt-2 border-t border-gray-100 dark:border-gray-700">
+                                                                        <Link href={`/cases/${case_.id}`} className="flex-1">
+                                                                            <Button variant="outline" size="sm" className="w-full text-xs hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:border-blue-300 dark:hover:border-blue-600">
+                                                                                Ver Detalhes
+                                                                            </Button>
+                                                                        </Link>
+                                                                        <Link href={`/cases/${case_.id}/edit`}>
+                                                                            <Button variant="ghost" size="sm" className="text-xs hover:bg-gray-100 dark:hover:bg-gray-700">
+                                                                                Editar
+                                                                            </Button>
+                                                                        </Link>
+                                                                    </div>
+                                                                </div>
+                                                            </CardContent>
+                                                        </Card>
+                                                    ))
+                                                ) : (
+                                                    <div className="text-center py-8 text-gray-400 dark:text-gray-500">
+                                                        <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                                                            <Briefcase className="w-6 h-6" />
+                                                        </div>
+                                                        <p className="text-sm">Nenhum caso nesta etapa</p>
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
                                 ))}

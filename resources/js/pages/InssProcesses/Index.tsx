@@ -7,8 +7,9 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, FileText, CheckCircle, AlertCircle, Users, Search, Filter, X, ExternalLink } from 'lucide-react';
+import { Calendar, FileText, CheckCircle, AlertCircle, Users, Search, Filter, X, ExternalLink, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import AdvboxTaskModal from '@/components/modals/AdvboxTaskModal';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -62,6 +63,8 @@ export default function InssProcessesIndex({ processos, stats, statusOptions, se
     const [selectedStatus, setSelectedStatus] = useState(filters.status || 'all');
     const [selectedServico, setSelectedServico] = useState(filters.servico || 'all');
     const [selectedPeriodo, setSelectedPeriodo] = useState(filters.periodo || 'all');
+    const [isAdvboxModalOpen, setIsAdvboxModalOpen] = useState(false);
+    const [selectedProcesso, setSelectedProcesso] = useState<Processo | null>(null);
 
     const handleFilter = () => {
         router.get('/inss-processes', {
@@ -83,14 +86,21 @@ export default function InssProcessesIndex({ processos, stats, statusOptions, se
     };
 
     const filterByStatus = (status: string) => {
+        console.log('filterByStatus chamado com status:', status);
+        console.log('Estado atual selectedStatus:', selectedStatus);
+        
         setSelectedStatus(status);
         
-        router.get('/inss-processes', {
+        const params = {
             search: searchTerm,
             status: status === 'all' ? '' : status,
             servico: selectedServico === 'all' ? '' : selectedServico,
             periodo: selectedPeriodo === 'all' ? '' : selectedPeriodo,
-        }, {
+        };
+        
+        console.log('Parâmetros enviados:', params);
+        
+        router.get('/inss-processes', params, {
             preserveState: true,
         });
     };
@@ -225,8 +235,11 @@ export default function InssProcessesIndex({ processos, stats, statusOptions, se
                 <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-4">
                     <Card className={cn(
                         "cursor-pointer transition-all duration-200 hover:shadow-md",
-                        selectedStatus === 'Em Análise' && "ring-2 ring-blue-500"
-                    )} onClick={() => filterByStatus('Em Análise')}>
+                        selectedStatus === 'EM ANÁLISE' && "ring-2 ring-blue-500"
+                    )} onClick={() => {
+                        console.log('Card Em Análise clicado!');
+                        filterByStatus('EM ANÁLISE');
+                    }}>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-xs md:text-sm font-medium">Em Análise</CardTitle>
                             <FileText className="h-4 w-4 text-muted-foreground" />
@@ -239,8 +252,11 @@ export default function InssProcessesIndex({ processos, stats, statusOptions, se
                     
                     <Card className={cn(
                         "cursor-pointer transition-all duration-200 hover:shadow-md",
-                        selectedStatus === 'Concluída' && "ring-2 ring-green-500"
-                    )} onClick={() => filterByStatus('Concluída')}>
+                        selectedStatus === 'CONCLUÍDA' && "ring-2 ring-green-500"
+                    )} onClick={() => {
+                        console.log('Card Concluída clicado!');
+                        filterByStatus('CONCLUÍDA');
+                    }}>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-xs md:text-sm font-medium">Concluída</CardTitle>
                             <CheckCircle className="h-4 w-4 text-muted-foreground" />
@@ -253,8 +269,11 @@ export default function InssProcessesIndex({ processos, stats, statusOptions, se
                     
                     <Card className={cn(
                         "cursor-pointer transition-all duration-200 hover:shadow-md",
-                        selectedStatus === 'Exigência' && "ring-2 ring-orange-500"
-                    )} onClick={() => filterByStatus('Exigência')}>
+                        selectedStatus === 'EXIGÊNCIA' && "ring-2 ring-orange-500"
+                    )} onClick={() => {
+                        console.log('Card Exigência clicado!');
+                        filterByStatus('EXIGÊNCIA');
+                    }}>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-xs md:text-sm font-medium">Em Exigência</CardTitle>
                             <AlertCircle className="h-4 w-4 text-muted-foreground" />
@@ -381,7 +400,7 @@ export default function InssProcessesIndex({ processos, stats, statusOptions, se
                                     <div className="col-span-2">SERVIÇO</div>
                                     <div className="col-span-2">SITUAÇÃO</div>
                                     <div className="col-span-2">ÚLTIMA ATUALIZAÇÃO</div>
-                                    <div className="col-span-2">AÇÕES</div>
+                                    <div className="col-span-2 text-center">AÇÕES</div>
                                 </div>
 
                                 {/* Lista de processos */}
@@ -433,22 +452,35 @@ export default function InssProcessesIndex({ processos, stats, statusOptions, se
                                             </div>
 
                                             <div className="pt-2">
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                    className="w-full"
-                                                    asChild
-                                                >
-                                                    <a 
-                                                        href={`https://atendimento.inss.gov.br/tarefas/detalhar_tarefa/${processo.protocolo}`}
-                                                        target="_blank" 
-                                                        rel="noopener noreferrer"
-                                                        className="flex items-center justify-center gap-1"
+                                                <div className="flex gap-2 justify-center">
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className="h-8 w-8 p-0"
+                                                        asChild
+                                                        title="Ver no INSS"
                                                     >
-                                                        <ExternalLink className="h-4 w-4" />
-                                                        Ver no INSS
-                                                    </a>
-                                                </Button>
+                                                        <a 
+                                                            href={`https://atendimento.inss.gov.br/tarefas/detalhar_tarefa/${processo.protocolo}`}
+                                                            target="_blank" 
+                                                            rel="noopener noreferrer"
+                                                        >
+                                                            <ExternalLink className="h-4 w-4 text-blue-600" />
+                                                        </a>
+                                                    </Button>
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className="h-8 w-8 p-0"
+                                                        onClick={() => {
+                                                            setSelectedProcesso(processo);
+                                                            setIsAdvboxModalOpen(true);
+                                                        }}
+                                                        title="Adicionar no AdvBox"
+                                                    >
+                                                        <Plus className="h-4 w-4 text-indigo-600" />
+                                                    </Button>
+                                                </div>
                                             </div>
                                         </div>
 
@@ -496,21 +528,33 @@ export default function InssProcessesIndex({ processos, stats, statusOptions, se
                                         </div>
                                         
                                         <div className="hidden md:block col-span-2">
-                                            <div className="flex items-center gap-2">
+                                            <div className="flex gap-2 justify-center">
                                                 <Button
                                                     variant="outline"
                                                     size="sm"
+                                                    className="h-8 w-8 p-0"
                                                     asChild
+                                                    title="Ver no INSS"
                                                 >
                                                     <a 
                                                         href={`https://atendimento.inss.gov.br/tarefas/detalhar_tarefa/${processo.protocolo}`}
                                                         target="_blank" 
                                                         rel="noopener noreferrer"
-                                                        className="flex items-center gap-1"
                                                     >
-                                                        <ExternalLink className="h-4 w-4" />
-                                                        Ver no INSS
+                                                        <ExternalLink className="h-4 w-4 text-blue-600" />
                                                     </a>
+                                                </Button>
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="h-8 w-8 p-0"
+                                                    onClick={() => {
+                                                        setSelectedProcesso(processo);
+                                                        setIsAdvboxModalOpen(true);
+                                                    }}
+                                                    title="Adicionar no AdvBox"
+                                                >
+                                                    <Plus className="h-4 w-4 text-indigo-600" />
                                                 </Button>
                                             </div>
                                         </div>
@@ -577,6 +621,21 @@ export default function InssProcessesIndex({ processos, stats, statusOptions, se
                     </CardContent>
                 </Card>
             </div>
+            
+            {/* Modal do AdvBox */}
+            <AdvboxTaskModal
+                isOpen={isAdvboxModalOpen}
+                onClose={() => {
+                    setIsAdvboxModalOpen(false);
+                    setSelectedProcesso(null);
+                }}
+                andamento={selectedProcesso ? {
+                    processo: {
+                        protocolo: selectedProcesso.protocolo,
+                        nome: selectedProcesso.nome
+                    }
+                } : null}
+            />
         </AppLayout>
     );
 }

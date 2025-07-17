@@ -32,7 +32,6 @@ interface DashboardProps {
         total_cases: number;
         pendente: number;
         em_coleta: number;
-        aguarda_peticao: number;
         protocolado: number;
         concluido: number;
         rejeitado: number;
@@ -80,7 +79,6 @@ export default function Dashboard(allProps: DashboardProps) {
         total_cases: 0,
         pendente: 0,
         em_coleta: 0,
-        aguarda_peticao: 0,
         protocolado: 0,
         concluido: 0,
         rejeitado: 0,

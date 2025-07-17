@@ -16,7 +16,6 @@ class DashboardController extends Controller
             'total_cases' => LegalCase::count(),
             'pendente' => LegalCase::where('status', 'pendente')->count(),
             'em_coleta' => LegalCase::where('status', 'em_coleta')->count(),
-            'aguarda_peticao' => LegalCase::where('status', 'aguarda_peticao')->count(),
             'protocolado' => LegalCase::where('status', 'protocolado')->count(),
             'concluido' => LegalCase::where('status', 'concluido')->count(),
             'rejeitado' => LegalCase::where('status', 'rejeitado')->count(),
@@ -35,4 +34,4 @@ class DashboardController extends Controller
             'inssStats' => $inssStats,
         ]);
     }
-} 
+}

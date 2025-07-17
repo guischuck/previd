@@ -121,8 +121,6 @@ export default function Edit({ case: case_, users, benefitTypes }: EditProps) {
                                         <SelectContent>
                                             <SelectItem value="pendente">Pendente</SelectItem>
                                             <SelectItem value="em_coleta">Em Coleta</SelectItem>
-                                            <SelectItem value="aguarda_peticao">Aguarda Petição</SelectItem>
-                                            <SelectItem value="protocolado">Protocolado</SelectItem>
                                             <SelectItem value="concluido">Concluído</SelectItem>
                                             <SelectItem value="arquivado">Arquivado</SelectItem>
                                         </SelectContent>

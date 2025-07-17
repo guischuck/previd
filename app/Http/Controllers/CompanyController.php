@@ -97,7 +97,7 @@ class CompanyController extends Controller
                 'users_count' => $company->users()->count(),
                 'cases_count' => $company->cases()->count(),
                 'templates_count' => $company->petitionTemplates()->count(),
-                'active_cases' => $company->cases()->whereIn('status', ['pendente', 'em_coleta', 'aguarda_peticao'])->count(),
+                'active_cases' => $company->cases()->whereIn('status', ['pendente', 'em_coleta'])->count(),
                 'completed_cases' => $company->cases()->where('status', 'concluido')->count(),
             ]
         ]);

@@ -51,7 +51,6 @@ class CaseController extends Controller
             $statuses = [
                 'pendente' => 'Pendente',
                 'em_coleta' => 'Em Coleta',
-                'aguarda_peticao' => 'Aguarda Petição',
                 'protocolado' => 'Protocolado',
                 'concluido' => 'Concluído',
                 'arquivado' => 'Arquivado',
@@ -299,7 +298,7 @@ class CaseController extends Controller
         }
         
         if ($request->has('status')) {
-            $validationRules['status'] = 'required|in:pendente,em_coleta,aguarda_peticao,protocolado,concluido,arquivado';
+            $validationRules['status'] = 'required|in:pendente,em_coleta,protocolado,concluido,arquivado';
             \Log::info('Status validation rule added:', ['rule' => $validationRules['status']]);
         }
         
@@ -608,7 +607,6 @@ class CaseController extends Controller
                         'total_cases' => 0,
                         'pendente' => 0,
                         'em_coleta' => 0,
-                        'aguarda_peticao' => 0,
                         'protocolado' => 0,
                         'concluido' => 0,
                         'rejeitado' => 0,
@@ -632,7 +630,6 @@ class CaseController extends Controller
                     'total_cases' => \App\Models\LegalCase::where('company_id', $companyId)->count(),
                     'pendente' => \App\Models\LegalCase::where('company_id', $companyId)->where('status', 'pendente')->count(),
                     'em_coleta' => \App\Models\LegalCase::where('company_id', $companyId)->where('status', 'em_coleta')->count(),
-                    'aguarda_peticao' => \App\Models\LegalCase::where('company_id', $companyId)->where('status', 'aguarda_peticao')->count(),
                     'protocolado' => \App\Models\LegalCase::where('company_id', $companyId)->where('status', 'protocolado')->count(),
                     'concluido' => \App\Models\LegalCase::where('company_id', $companyId)->where('status', 'concluido')->count(),
                     'rejeitado' => \App\Models\LegalCase::where('company_id', $companyId)->where('status', 'rejeitado')->count(),
@@ -695,7 +692,6 @@ class CaseController extends Controller
                         'total_cases' => 0,
                         'pendente' => 0,
                         'em_coleta' => 0,
-                        'aguarda_peticao' => 0,
                         'protocolado' => 0,
                         'concluido' => 0,
                         'rejeitado' => 0,
@@ -723,7 +719,6 @@ class CaseController extends Controller
                     'total_cases' => 0,
                     'pendente' => 0,
                     'em_coleta' => 0,
-                    'aguarda_peticao' => 0,
                     'protocolado' => 0,
                     'concluido' => 0,
                     'rejeitado' => 0,
@@ -849,27 +844,31 @@ class CaseController extends Controller
         })->count();
         $clientesAtivos = \App\Models\LegalCase::where('company_id', $companyId)
             ->whereHas('employmentRelationships', function($q) {
-                $q->whereNull('collected_at');
+                $q->where('is_active', true);
             })->count();
+        // Clientes finalizados: casos onde TODOS os vínculos foram coletados (is_active = false)
         $clientesFinalizados = \App\Models\LegalCase::where('company_id', $companyId)
+            ->whereHas('employmentRelationships') // Tem vínculos
             ->whereDoesntHave('employmentRelationships', function($q) {
-                $q->whereNull('collected_at');
+                $q->where('is_active', true); // Não tem vínculos ativos (pendentes)
             })->count();
+        
+        // Empresas pendentes: conta vínculos pendentes (is_active = true)
         $empresasPendentes = \App\Models\EmploymentRelationship::whereHas('legalCase', function($q) use ($companyId) {
                 $q->where('company_id', $companyId);
             })
-            ->whereNull('collected_at')
-            ->distinct('employer_cnpj')
-            ->count('employer_cnpj');
+            ->where('is_active', true)
+            ->count();
+        
+        // Empresas concluídas: conta vínculos concluídos (is_active = false)
         $empresasConcluidas = \App\Models\EmploymentRelationship::whereHas('legalCase', function($q) use ($companyId) {
                 $q->where('company_id', $companyId);
             })
-            ->whereNotNull('collected_at')
-            ->distinct('employer_cnpj')
-            ->count('employer_cnpj');
+            ->where('is_active', false)
+            ->count();
         $coletasAtrasadas = \App\Models\LegalCase::where('company_id', $companyId)
             ->whereHas('employmentRelationships', function($q) {
-                $q->whereNull('collected_at');
+                $q->where('is_active', true);
             })
             ->where('created_at', '<', now()->subMonths(6))
             ->count();
@@ -1120,4 +1119,4 @@ class CaseController extends Controller
             'message' => 'Anotações atualizadas com sucesso!',
         ]);
     }
-} 
+}

@@ -1,1 +1,0 @@
-import{j as s}from"./app-ByIhTPwz.js";const t=({value:a=0,className:e=""})=>s.jsx("div",{className:`relative h-4 w-full overflow-hidden rounded-full bg-gray-200 ${e}`,children:s.jsx("div",{className:"h-full bg-blue-600 transition-all duration-300 ease-in-out",style:{width:`${Math.min(Math.max(a,0),100)}%`}})});export{t as P};

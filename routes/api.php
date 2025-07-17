@@ -28,56 +28,7 @@ Route::get('/test-clients', function() {
     ]);
 });
 
-// Rotas para o chat que usam auth web ao invés de sanctum
-Route::middleware(['auth', 'web'])->group(function () {
-    // Rota para buscar clientes (casos) para o chat - versão web
-    Route::get('/clients', function() {
-        try {
-            $user = auth()->user();
-            $totalCases = \App\Models\LegalCase::count();
-            
-            \Log::info('Chat clients request', [
-                'user_id' => $user?->id,
-                'user_company_id' => $user?->company_id,
-                'is_super_admin' => $user?->isSuperAdmin(),
-                'total_cases_in_db' => $totalCases
-            ]);
-            
-            $query = \App\Models\LegalCase::select('id', 'client_name as name');
-            
-            // Filtrar por empresa se não for super admin
-            if (!$user->isSuperAdmin()) {
-                $query->byCompany($user->company_id);
-            }
-            
-            $clients = $query->get();
-            
-            \Log::info('Chat clients result', [
-                'clients_count' => $clients->count(),
-                'first_few_clients' => $clients->take(3)->toArray()
-            ]);
-            
-            return response()->json($clients);
-        } catch (\Exception $e) {
-            \Log::error('Error in chat clients endpoint', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-            
-            return response()->json(['error' => 'Erro ao carregar clientes'], 500);
-        }
-    });
-    
-    // Rota para chat com IA - versão web
-    Route::post('/ai-chat', [DeepSeekChatController::class, '__invoke'])->name('api.ai-chat-web');
-    
-    // Rota para carregar histórico de mensagens - versão web
-    Route::get('/chat-messages', [DeepSeekChatController::class, 'getMessages'])->name('api.chat-messages-web');
-});
-
-Route::get('/rota-teste', function() {
-    return response()->json(['ok' => true]);
-});
+// Rotas de chat movidas para routes/web.php
 
 // Rotas para employment-relationships (temporariamente sem autenticação para debug)
 Route::post('/employment-relationships', [EmploymentRelationshipController::class, 'store']);

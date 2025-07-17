@@ -22,7 +22,8 @@ import {
     ArrowUpDown,
     Loader2,
     MessageSquare,
-    Copy
+    Copy,
+    Plus
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import axios from 'axios';
@@ -442,14 +443,14 @@ export default function AndamentosIndex({
                             </div>
                             
                             <div className="space-y-2">
-                                <label className="text-sm font-medium">Nova Situação</label>
-                                <Select value={selectedNovaSituacao} onValueChange={setSelectedNovaSituacao}>
+                                <label className="text-sm font-medium">Situação Anterior</label>
+                                <Select value={selectedSituacaoAnterior} onValueChange={setSelectedSituacaoAnterior}>
                                     <SelectTrigger>
                                         <SelectValue placeholder="Selecionar" />
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="all">Todas</SelectItem>
-                                        {situacaoOptions.map((situacao) => (
+                                        {situacaoAnteriorOptions.map((situacao) => (
                                             <SelectItem key={situacao} value={situacao}>
                                                 {normalizeSituacao(situacao)}
                                             </SelectItem>
@@ -459,14 +460,14 @@ export default function AndamentosIndex({
                             </div>
                             
                             <div className="space-y-2">
-                                <label className="text-sm font-medium">Situação Anterior</label>
-                                <Select value={selectedSituacaoAnterior} onValueChange={setSelectedSituacaoAnterior}>
+                                <label className="text-sm font-medium">Nova Situação</label>
+                                <Select value={selectedNovaSituacao} onValueChange={setSelectedNovaSituacao}>
                                     <SelectTrigger>
                                         <SelectValue placeholder="Selecionar" />
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="all">Todas</SelectItem>
-                                        {situacaoAnteriorOptions.map((situacao) => (
+                                        {situacaoOptions.map((situacao) => (
                                             <SelectItem key={situacao} value={situacao}>
                                                 {normalizeSituacao(situacao)}
                                             </SelectItem>
@@ -634,7 +635,7 @@ export default function AndamentosIndex({
                                                             className="h-8 w-8 p-0"
                                                             title="Adicionar no advbox"
                                                         >
-                                                            <FileText className="h-4 w-4 text-indigo-600" />
+                                                            <Plus className="h-4 w-4 text-indigo-600" />
                                                         </Button>
                                                     </div>
                                                 </td>
@@ -743,7 +744,7 @@ export default function AndamentosIndex({
                                                         className="h-7 w-7 p-0"
                                                         title="Adicionar no advbox"
                                                     >
-                                                        <FileText className="h-3 w-3 text-indigo-600" />
+                                                        <Plus className="h-3 w-3 text-indigo-600" />
                                                     </Button>
                                                 </div>
                                             </div>
