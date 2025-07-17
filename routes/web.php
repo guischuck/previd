@@ -156,6 +156,47 @@ Route::middleware(['auth', 'verified'])->group(function () {
         
         // Rota para salvar anotações
         Route::patch('/cases/{case}/notes', [CaseController::class, 'updateNotes'])->name('api.cases.update-notes');
+        
+        // Rotas do Chat
+        Route::get('/clients', function() {
+            try {
+                $user = auth()->user();
+                $totalCases = \App\Models\LegalCase::count();
+                
+                \Log::info('Chat clients request', [
+                    'user_id' => $user?->id,
+                    'user_company_id' => $user?->company_id,
+                    'is_super_admin' => $user?->isSuperAdmin(),
+                    'total_cases_in_db' => $totalCases
+                ]);
+                
+                $query = \App\Models\LegalCase::select('id', 'client_name as name');
+                
+                // Filtrar por empresa se não for super admin
+                if (!$user->isSuperAdmin()) {
+                    $query->byCompany($user->company_id);
+                }
+                
+                $clients = $query->get();
+                
+                \Log::info('Chat clients result', [
+                    'clients_count' => $clients->count(),
+                    'first_few_clients' => $clients->take(3)->toArray()
+                ]);
+                
+                return response()->json($clients);
+            } catch (\Exception $e) {
+                \Log::error('Error in chat clients endpoint', [
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString()
+                ]);
+                
+                return response()->json(['error' => 'Erro ao carregar clientes'], 500);
+            }
+        });
+        
+        Route::post('/ai-chat', [\App\Http\Controllers\Api\DeepSeekChatController::class, '__invoke'])->name('api.ai-chat-web');
+        Route::get('/chat-messages', [\App\Http\Controllers\Api\DeepSeekChatController::class, 'getMessages'])->name('api.chat-messages-web');
     });
     
     // Rota para buscar tarefas do caso

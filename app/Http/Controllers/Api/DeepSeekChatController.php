@@ -16,18 +16,33 @@ class DeepSeekChatController extends Controller
 {
     public function getMessages(Request $request)
     {
-        $request->validate([
-            'case_id' => 'nullable|integer|exists:legal_cases,id'
+        Log::info('getMessages called', [
+            'case_id' => $request->get('case_id'),
+            'all_params' => $request->all(),
+            'method' => $request->method(),
+            'url' => $request->fullUrl()
+        ]);
+        
+        // Temporariamente removendo autenticação para debug
+        $caseId = $request->get('case_id');
+        
+        if (!$caseId) {
+            Log::error('case_id not provided');
+            return response()->json(['error' => 'case_id is required'], 400);
+        }
+        
+        Log::info('Searching for messages', ['case_id' => $caseId]);
+        
+        $messages = ChatMessage::where('case_id', $caseId)
+            ->orderBy('created_at', 'asc')
+            ->get();
+            
+        Log::info('Messages found', [
+            'count' => $messages->count(),
+            'messages' => $messages->toArray()
         ]);
 
-        $query = ChatMessage::where('user_id', auth()->id())
-            ->orderBy('created_at', 'asc');
-
-        if ($request->case_id) {
-            $query->where('case_id', $request->case_id);
-        }
-
-        return $query->get();
+        return response()->json($messages);
     }
 
     public function __invoke(Request $request, DeepSeekService $deepSeek)

@@ -80,11 +80,6 @@ export function AppSidebar() {
             icon: Clock,
         },
         {
-            title: 'Chat',
-            href: '/chat',
-            icon: MessageCircle,
-        },
-        {
             title: 'Processos',
             href: '/inss-processes',
             icon: Folder,
@@ -93,6 +88,11 @@ export function AppSidebar() {
             title: 'Petições',
             href: '/petitions',
             icon: BookOpen,
+        },
+        {
+            title: 'Chat',
+            href: '/chat',
+            icon: MessageCircle,
         },
         {
             title: 'Workflows',

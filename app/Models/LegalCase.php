@@ -40,6 +40,12 @@ class LegalCase extends Model
         'workflow_tasks' => 'array',
     ];
 
+    protected $appends = [
+        'collection_progress',
+        'status_color',
+        'status_text'
+    ];
+
     public function company(): BelongsTo
     {
         return $this->belongsTo(Company::class);
@@ -85,7 +91,6 @@ class LegalCase extends Model
         return match($this->status) {
             'pendente' => 'yellow',
             'em_coleta' => 'blue',
-            'aguarda_peticao' => 'orange',
             'protocolado' => 'purple',
             'concluido' => 'green',
             'arquivado' => 'red',
@@ -98,7 +103,6 @@ class LegalCase extends Model
         return match($this->status) {
             'pendente' => 'Pendente',
             'em_coleta' => 'Em Coleta',
-            'aguarda_peticao' => 'Aguarda Petição',
             'protocolado' => 'Protocolado',
             'concluido' => 'Concluído',
             'arquivado' => 'Arquivado',
@@ -150,9 +154,9 @@ class LegalCase extends Model
         
         // Se todos os vínculos foram concluídos
         if ($progress['percentage'] == 100) {
-            // Se estava em coleta, muda para aguarda petição
+            // Se estava em coleta, muda diretamente para concluído
             if ($this->status === 'em_coleta') {
-                $this->update(['status' => 'aguarda_peticao']);
+                $this->update(['status' => 'concluido']);
             }
         } else {
             // Se há vínculos pendentes e não está em coleta
@@ -166,4 +170,4 @@ class LegalCase extends Model
     {
         return $query->where('company_id', $companyId);
     }
-} 
+}

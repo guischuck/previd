@@ -458,6 +458,26 @@ export default function Show({ case: case_, users, benefitTypes }: ShowProps) {
     // Estado para o status do caso
     const [caseStatus, setCaseStatus] = useState(case_.status);
 
+    // Atualizar progresso da coleta quando a página carrega
+    useEffect(() => {
+        // Forçar recálculo do progresso baseado nos vínculos atuais
+        if (case_.employment_relationships) {
+            const totalVinculos = case_.employment_relationships.length;
+            const vinculosConcluidos = case_.employment_relationships.filter(v => !v.is_active).length;
+            const percentage = totalVinculos > 0 ? Math.round((vinculosConcluidos / totalVinculos) * 100) : 0;
+            
+            const updatedProgress = {
+                percentage,
+                completed: vinculosConcluidos,
+                total: totalVinculos,
+                status: percentage === 100 ? 'Completo' : totalVinculos === 0 ? 'Sem vínculos' : 'Em andamento'
+            };
+            
+            console.log('Atualizando progresso na inicialização:', updatedProgress);
+            setCollectionProgress(updatedProgress);
+        }
+    }, [case_.employment_relationships]);
+
     // Listener para atualizações de progresso em tempo real
     useEffect(() => {
         const handleProgressUpdate = (event: CustomEvent) => {
@@ -570,15 +590,13 @@ export default function Show({ case: case_, users, benefitTypes }: ShowProps) {
                                                 ? 'Pendente'
                                                 : caseStatus === 'em_coleta'
                                                   ? 'Em Coleta'
-                                                  : caseStatus === 'aguarda_peticao'
-                                                    ? 'Aguarda Petição'
-                                                    : caseStatus === 'protocolado'
-                                                      ? 'Protocolado'
-                                                      : caseStatus === 'concluido'
-                                                        ? 'Concluído'
-                                                        : caseStatus === 'rejeitado'
-                                                          ? 'Rejeitado'
-                                                          : caseStatus}
+                                                  : caseStatus === 'protocolado'
+                                                    ? 'Protocolado'
+                                                    : caseStatus === 'concluido'
+                                                      ? 'Concluído'
+                                                      : caseStatus === 'rejeitado'
+                                                        ? 'Rejeitado'
+                                                        : caseStatus}
                                         </Badge>
                                     </div>
                                     <div>
@@ -890,11 +908,7 @@ export default function Show({ case: case_, users, benefitTypes }: ShowProps) {
                                         </div>
                                     )}
 
-                                    <Link href={`/documents/case/${case_.id}`}>
-                                        <Button variant="outline" className="w-full">
-                                            Ver Todos os Documentos
-                                        </Button>
-                                    </Link>
+
                                 </div>
                             </CardContent>
                         </Card>

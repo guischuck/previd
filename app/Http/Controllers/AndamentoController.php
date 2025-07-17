@@ -111,6 +111,7 @@ class AndamentoController extends Controller
                 
             $situacaoAnteriorOptions = HistoricoSituacao::where('id_empresa', $companyId)
                 ->whereNotNull('situacao_anterior')
+                ->where('situacao_anterior', '!=', 'CONCLUÍDA')
                 ->distinct()
                 ->pluck('situacao_anterior')
                 ->filter()
@@ -162,23 +163,33 @@ class AndamentoController extends Controller
 
     private function getStatsHistorico($companyId)
     {
-        $mudancasHoje = HistoricoSituacao::where('id_empresa', $companyId)
+        // Status permitidos com nomenclatura correta
+        $statusPermitidos = ['EXIGÊNCIA', 'CONCLUÍDA'];
+        
+        // Aplicar os mesmos filtros da listagem para consistência
+        $baseQuery = HistoricoSituacao::where('id_empresa', $companyId)
+            ->whereHas('processo', function($q) use ($statusPermitidos) {
+                $q->whereIn('situacao', $statusPermitidos);
+            })
+            ->where('situacao_atual', '!=', 'EM ANÁLISE');
+        
+        $mudancasHoje = (clone $baseQuery)
             ->whereDate('data_mudanca', today())
             ->count();
             
-        $mudancasSemana = HistoricoSituacao::where('id_empresa', $companyId)
+        $mudancasSemana = (clone $baseQuery)
             ->where('data_mudanca', '>=', now()->subWeek())
             ->count();
             
-        $mudancasMes = HistoricoSituacao::where('id_empresa', $companyId)
+        $mudancasMes = (clone $baseQuery)
             ->where('data_mudanca', '>=', now()->subMonth())
             ->count();
             
-        $naoVistos = HistoricoSituacao::where('id_empresa', $companyId)
+        $naoVistos = (clone $baseQuery)
             ->where('visto', false)
             ->count();
             
-        $totalMudancas = HistoricoSituacao::where('id_empresa', $companyId)
+        $totalMudancas = (clone $baseQuery)
             ->count();
 
         return [
