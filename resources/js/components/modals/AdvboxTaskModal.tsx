@@ -63,13 +63,20 @@ export default function AdvboxTaskModal({
     const fetchData = async () => {
         setLoading(true);
         try {
+            console.log('Fetching data for andamento:', andamento);
+            
             // Fetch settings (users and tasks) from the new PHP API
+            console.log('Fetching settings...');
             const settingsResponse = await axios.get('/advbox_api.php?endpoint=settings');
+            console.log('Settings response:', settingsResponse.data);
             
             if (settingsResponse.data.success) {
                 setUsers(settingsResponse.data.users || []);
                 setTasks(settingsResponse.data.tasks || []);
+                console.log('Users loaded:', settingsResponse.data.users?.length || 0);
+                console.log('Tasks loaded:', settingsResponse.data.tasks?.length || 0);
             } else {
+                console.error('Settings fetch failed:', settingsResponse.data);
                 setError('Erro ao carregar configurações: ' + (settingsResponse.data.errors?.join(', ') || 'Erro desconhecido'));
                 setUsers([]);
                 setTasks([]);
@@ -77,10 +84,13 @@ export default function AdvboxTaskModal({
 
             // Fetch lawsuit by protocol number
             if (andamento.processo?.protocolo) {
+                console.log('Fetching lawsuit for protocol:', andamento.processo.protocolo);
                 const lawsuitResponse = await axios.get(`/advbox_api.php?endpoint=lawsuits&protocol_number=${andamento.processo.protocolo}`);
+                console.log('Lawsuit response:', lawsuitResponse.data);
                 
                 if (lawsuitResponse.data.success) {
                     setLawsuit(lawsuitResponse.data.data);
+                    console.log('Lawsuit found:', lawsuitResponse.data.data);
                 } else {
                     console.warn('Processo não encontrado no AdvBox:', lawsuitResponse.data.error);
                     setLawsuit(null);
@@ -88,6 +98,7 @@ export default function AdvboxTaskModal({
             }
         } catch (error: any) {
             console.error('Error fetching data:', error);
+            console.error('Error details:', error.response?.data);
             setError(error.response?.data?.error || 'Erro ao carregar dados');
             setUsers([]);
             setTasks([]);
@@ -97,12 +108,19 @@ export default function AdvboxTaskModal({
     };
 
     const handleCreateTask = async () => {
+        console.log('handleCreateTask called');
+        console.log('lawsuit:', lawsuit);
+        console.log('selectedTask:', selectedTask);
+        console.log('selectedUsers:', selectedUsers);
+        
         if (!lawsuit) {
+            console.error('Lawsuit not found');
             toast.error('Processo não encontrado no AdvBox');
             return;
         }
 
         if (!selectedTask || selectedUsers.length === 0) {
+            console.error('Missing task or users:', { selectedTask, selectedUsers });
             toast.error('Selecione uma tarefa e pelo menos um usuário');
             return;
         }
@@ -114,6 +132,7 @@ export default function AdvboxTaskModal({
             return `${day}/${month}/${year}`;
         };
 
+        console.log('Starting task creation...');
         setLoading(true);
         try {
             const taskData = {
@@ -137,18 +156,32 @@ export default function AdvboxTaskModal({
                 process_number: lawsuit.process_number
             };
 
-            const response = await axios.post('/advbox_api.php?endpoint=posts', taskData);
+            console.log('Task data to be sent:', taskData);
+
+            const response = await axios.post('/advbox_api.php?endpoint=posts', {
+                data: taskData
+            }, {
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            console.log('API Response:', response.data);
 
             if (response.data.success) {
+                console.log('Task created successfully');
                 toast.success('Tarefa criada com sucesso no AdvBox');
                 onClose();
             } else {
+                console.error('Task creation failed:', response.data);
                 toast.error('Erro ao criar tarefa no AdvBox: ' + response.data.error);
             }
         } catch (error: any) {
             console.error('Error creating task:', error);
+            console.error('Error details:', error.response?.data);
             toast.error(error.response?.data?.error || 'Erro ao criar tarefa');
         } finally {
+            console.log('Task creation finished');
             setLoading(false);
         }
     };
@@ -166,6 +199,7 @@ export default function AdvboxTaskModal({
             return `${day}/${month}/${year}`;
         };
 
+        console.log('Starting movement creation...');
         setLoading(true);
         try {
             const movementData = {
@@ -175,18 +209,32 @@ export default function AdvboxTaskModal({
                 type: 'MANUAL'
             };
 
-            const response = await axios.post('/advbox_api.php?endpoint=movement', movementData);
+            console.log('Movement data to be sent:', movementData);
+
+            const response = await axios.post('/advbox_api.php?endpoint=movement', {
+                data: movementData
+            }, {
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            console.log('API Response:', response.data);
 
             if (response.data.success) {
+                console.log('Movement created successfully');
                 toast.success('Movimento criado com sucesso no AdvBox');
                 onClose();
             } else {
+                console.error('Movement creation failed:', response.data);
                 toast.error('Erro ao criar movimento no AdvBox: ' + response.data.error);
             }
         } catch (error: any) {
             console.error('Error creating movement:', error);
+            console.error('Error details:', error.response?.data);
             toast.error(error.response?.data?.error || 'Erro ao criar movimento');
         } finally {
+            console.log('Movement creation finished');
             setLoading(false);
         }
     };
@@ -407,4 +455,4 @@ export default function AdvboxTaskModal({
             </DialogContent>
         </Dialog>
     );
-} 
+}

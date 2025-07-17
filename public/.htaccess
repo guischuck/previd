@@ -21,6 +21,10 @@
     # EXCEÇÃO: Permitir execução direta dos arquivos nas pastas api e app/api
     RewriteCond %{REQUEST_URI} ^/(api|app/api)/.*\.php$
     RewriteRule ^(.*)$ $1 [L]
+    
+    # EXCEÇÃO: Permitir execução direta do advbox_api.php
+    RewriteCond %{REQUEST_URI} ^/advbox_api\.php
+    RewriteRule ^(.*)$ $1 [L]
 
     # Send Requests To Front Controller (EXCETO arquivos das pastas api)...
     RewriteCond %{REQUEST_FILENAME} !-d

@@ -78,9 +78,20 @@ function makeAdvboxRequest($endpoint, $method = 'GET', $data = null) {
         ];
     } else {
         advboxLog("Erro HTTP {$httpCode} para: {$url}", 'error');
+        
+        // Tratamento específico para erro 429 (Rate Limit)
+        if ($httpCode == 429) {
+            $errorMessage = 'Limite de requisições atingido. Tente novamente mais tarde.';
+            if (isset($responseData['error'])) {
+                $errorMessage = $responseData['error'];
+            }
+        } else {
+            $errorMessage = $responseData['message'] ?? $responseData['error'] ?? 'Erro desconhecido';
+        }
+        
         return [
             'success' => false,
-            'error' => 'HTTP ' . $httpCode . ': ' . ($responseData['message'] ?? 'Erro desconhecido'),
+            'error' => 'HTTP ' . $httpCode . ': ' . $errorMessage,
             'data' => $responseData
         ];
     }
@@ -97,13 +108,20 @@ function getAdvboxUsers() {
     $data = $result['data'];
     $users = [];
     
-    // Extrair usuários das configurações
-    if (isset($data['user']) && isset($data['user']['id'])) {
-        $users[] = $data['user'];
+    // Extrair usuários das configurações - a API retorna diretamente no campo 'users'
+    if (isset($data['users']) && is_array($data['users'])) {
+        $users = $data['users'];
     }
     
-    if (isset($data['company']) && isset($data['company']['users'])) {
-        $users = array_merge($users, $data['company']['users']);
+    // Fallback para estruturas antigas
+    if (empty($users)) {
+        if (isset($data['user']) && isset($data['user']['id'])) {
+            $users[] = $data['user'];
+        }
+        
+        if (isset($data['company']) && isset($data['company']['users'])) {
+            $users = array_merge($users, $data['company']['users']);
+        }
     }
     
     return [
@@ -123,14 +141,23 @@ function getAdvboxTasks() {
     $data = $result['data'];
     $tasks = [];
     
-    // Extrair tarefas das configurações
+    // Extrair tarefas das configurações - a API retorna diretamente no campo 'tasks'
     if (isset($data['tasks']) && is_array($data['tasks'])) {
         $tasks = $data['tasks'];
     }
     
+    // Mapear tarefas para o formato esperado pelo frontend
+    $formattedTasks = [];
+    foreach ($tasks as $task) {
+        $formattedTasks[] = [
+            'id' => $task['id'],
+            'name' => $task['task'] ?? $task['name'] ?? 'Tarefa sem nome'
+        ];
+    }
+    
     return [
         'success' => true,
-        'data' => $tasks
+        'data' => $formattedTasks
     ];
 }
 
@@ -145,17 +172,20 @@ function getLawsuitByProtocol($protocolNumber) {
         return $result;
     }
     
-    $lawsuits = $result['data'];
-    advboxLog("Resposta do AdvBox para protocolo {$protocolNumber}: " . json_encode($lawsuits));
+    $response = $result['data'];
+    advboxLog("Resposta do AdvBox para protocolo {$protocolNumber}: " . json_encode($response));
     
-    // Verificar se $lawsuits é um array e não está vazio
-    if (!is_array($lawsuits)) {
-        advboxLog("Resposta não é um array: " . gettype($lawsuits), 'error');
+    // A resposta do AdvBox vem no formato: {"data": [...], "totalCount": N, ...}
+    // Precisamos acessar o array 'data' dentro da resposta
+    if (!isset($response['data']) || !is_array($response['data'])) {
+        advboxLog("Campo 'data' não encontrado ou não é um array na resposta", 'error');
         return [
             'success' => false,
             'error' => 'Resposta inválida do AdvBox para o protocolo: ' . $protocolNumber
         ];
     }
+    
+    $lawsuits = $response['data'];
     
     if (empty($lawsuits)) {
         advboxLog("Nenhum processo encontrado para protocolo: {$protocolNumber}");
@@ -167,7 +197,7 @@ function getLawsuitByProtocol($protocolNumber) {
     
     // Verificar se o primeiro elemento existe antes de acessá-lo
     if (!isset($lawsuits[0])) {
-        advboxLog("Primeiro elemento não existe no array", 'error');
+        advboxLog("Primeiro elemento não existe no array de processos", 'error');
         return [
             'success' => false,
             'error' => 'Erro ao processar dados do processo'
@@ -317,6 +347,7 @@ try {
                     
                     $result = getLawsuitByProtocol($protocolNumber);
                     echo json_encode($result);
+                    flush();
                     break;
                     
                 default:
@@ -331,17 +362,37 @@ try {
             
         case 'POST':
             $input = json_decode(file_get_contents('php://input'), true);
+            advboxLog("POST Input received: " . json_encode($input));
             
             switch ($endpoint) {
                 case 'posts':
                     // POST /advbox_api.php/posts - Criar tarefa
-                    $result = createAdvboxTask($input);
-                    echo json_encode($result);
+                    // Se os dados estão dentro de um campo 'data', extrair
+                    $taskData = isset($input['data']) ? $input['data'] : $input;
+                    advboxLog("Task data to process: " . json_encode($taskData));
+                    
+                    // Os dados já vêm no formato correto do modal, apenas validar campos obrigatórios
+                    $result = createAdvboxTask($taskData);
+                    advboxLog("Result to return: " . json_encode($result));
+                    
+                    // Garantir que não há output buffering ativo
+                    while (ob_get_level()) {
+                        ob_end_clean();
+                    }
+                    
+                    header('Content-Type: application/json');
+                    $jsonResponse = json_encode($result);
+                    advboxLog("JSON Response length: " . strlen($jsonResponse));
+                    echo $jsonResponse;
+                    exit();
                     break;
                     
                 case 'movement':
                     // POST /advbox_api.php/movement - Criar movimento
-                    $result = createAdvboxMovement($input);
+                    // Se os dados estão dentro de um campo 'data', extrair
+                    $movementData = isset($input['data']) ? $input['data'] : $input;
+                    advboxLog("Movement data to process: " . json_encode($movementData));
+                    $result = createAdvboxMovement($movementData);
                     echo json_encode($result);
                     break;
                     
@@ -371,4 +422,4 @@ try {
         'error' => 'Erro interno: ' . $e->getMessage()
     ]);
 }
-?> 
+?>

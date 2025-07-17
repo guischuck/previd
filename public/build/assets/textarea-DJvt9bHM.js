@@ -1,0 +1,1 @@
+import{r as s,j as o}from"./app-ByIhTPwz.js";const t=s.forwardRef(({className:r,...e},a)=>o.jsx("textarea",{ref:a,className:`block w-full rounded-md border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm ${r||""}`,...e}));t.displayName="Textarea";export{t as T};
