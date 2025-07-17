@@ -84,6 +84,7 @@ export default function InssProcessesIndex({ processos, stats, statusOptions, se
 
     const filterByStatus = (status: string) => {
         setSelectedStatus(status);
+        
         router.get('/inss-processes', {
             search: searchTerm,
             status: status === 'all' ? '' : status,
@@ -114,6 +115,25 @@ export default function InssProcessesIndex({ processos, stats, statusOptions, se
                 return 'bg-red-100 text-red-800 border-red-200 dark:bg-red-900/20 dark:text-red-300 dark:border-red-700';
             default:
                 return 'bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-900/20 dark:text-gray-300 dark:border-gray-700';
+        }
+    };
+
+    const normalizeSituacao = (situacao: string): string => {
+        if (!situacao) return 'N/A';
+        
+        const normalized = situacao.toUpperCase();
+        switch (normalized) {
+            case 'EM ANÁLISE':
+            case 'EM ANALISE':
+                return 'EM ANÁLISE';
+            case 'EXIGÊNCIA':
+            case 'EXIGENCIA':
+                return 'EXIGÊNCIA';
+            case 'CONCLUÍDA':
+            case 'CONCLUIDA':
+                return 'CONCLUÍDA';
+            default:
+                return normalized;
         }
     };
 
@@ -244,18 +264,15 @@ export default function InssProcessesIndex({ processos, stats, statusOptions, se
                             <p className="text-xs text-muted-foreground mt-1">Ver todos ➜</p>
                         </CardContent>
                     </Card>
-                    
                     <Card className={cn(
-                        "cursor-pointer transition-all duration-200 hover:shadow-md",
-                        selectedStatus === 'Protocolados Hoje' && "ring-2 ring-purple-500"
-                    )} onClick={() => filterByStatus('Protocolados Hoje')}>
+                        "transition-all duration-200 hover:shadow-md"
+                    )}>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-xs md:text-sm font-medium">Protocolados Hoje</CardTitle>
                             <Calendar className="h-4 w-4 text-muted-foreground" />
                         </CardHeader>
                         <CardContent>
                             <div className="text-lg md:text-2xl font-bold">{stats?.protocolados_hoje || 0}</div>
-                            <p className="text-xs text-muted-foreground mt-1">Ver todos ➜</p>
                         </CardContent>
                     </Card>
                 </div>
@@ -389,7 +406,7 @@ export default function InssProcessesIndex({ processos, stats, statusOptions, se
                                                     </div>
                                                 </div>
                                                 <Badge className={getStatusColor(processo.situacao)}>
-                                                    {processo.situacao}
+                                                    {normalizeSituacao(processo.situacao)}
                                                 </Badge>
                                             </div>
 
@@ -456,7 +473,7 @@ export default function InssProcessesIndex({ processos, stats, statusOptions, se
                                         <div className="hidden md:block col-span-2">
                                             <div className="space-y-2">
                                                 <Badge className={getStatusColor(processo.situacao)}>
-                                                    {processo.situacao}
+                                                    {normalizeSituacao(processo.situacao)}
                                                 </Badge>
                                                 {processo.situacao?.toUpperCase().includes('EXIGÊNCIA') || processo.situacao?.toUpperCase().includes('EXIGENCIA') ? (
                                                     (() => {

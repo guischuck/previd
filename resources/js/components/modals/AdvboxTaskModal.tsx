@@ -1,384 +1,458 @@
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
-import { useState } from "react";
-import axios from "axios";
-import { toast } from "react-toastify";
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import { 
+    Dialog, 
+    DialogContent, 
+    DialogHeader, 
+    DialogTitle, 
+    DialogDescription 
+} from "@/components/ui/dialog";
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Loader2, Users, FileText, Calendar, AlertCircle } from 'lucide-react';
+import { toast } from 'react-toastify';
 
 interface AdvboxTaskModalProps {
     isOpen: boolean;
     onClose: () => void;
-    andamento: {
-        id: number;
-        processo: {
-            protocolo: string;
-            nome: string;
-            cpf: string;
-            servico: string;
-        };
-        situacao_anterior: string;
-        situacao_atual: string;
-    };
+    andamento: any;
 }
 
-interface FormErrors {
-    from?: string;
-    guests?: string;
-    tasks_id?: string;
-    start_date?: string;
-    [key: string]: string | undefined;
+interface User {
+    id: number;
+    name: string;
 }
 
-export default function AdvboxTaskModal({ isOpen, onClose, andamento }: AdvboxTaskModalProps) {
+interface Task {
+    id: number;
+    name: string;
+}
+
+interface Lawsuit {
+    id: number;
+    process_number?: string;
+    protocol_number?: string;
+}
+
+export default function AdvboxTaskModal({ 
+    isOpen, 
+    onClose, 
+    andamento 
+}: AdvboxTaskModalProps) {
+    const [users, setUsers] = useState<User[]>([]);
+    const [tasks, setTasks] = useState<Task[]>([]);
+    const [lawsuit, setLawsuit] = useState<Lawsuit | null>(null);
     const [loading, setLoading] = useState(false);
-    const [errors, setErrors] = useState<FormErrors>({});
-    const [formData, setFormData] = useState({
-        from: '', // ID do usuário que está criando (obrigatório)
-        guests: [] as number[], // Lista de IDs dos convidados (obrigatório)
-        tasks_id: '', // ID da tarefa relacionada (obrigatório)
-        comments: `Atualização de situação do processo\n\nCliente: ${andamento.processo.nome}\nCPF: ${andamento.processo.cpf}\nServiço: ${andamento.processo.servico}\nSituação Anterior: ${andamento.situacao_anterior || 'N/A'}\nNova Situação: ${andamento.situacao_atual}\nProtocolo INSS: ${andamento.processo.protocolo}`,
-        start_date: format(new Date(), 'dd/MM/yyyy'),
-        start_time: format(new Date(), 'HH:mm'),
-        end_date: format(new Date(), 'dd/MM/yyyy'),
-        end_time: format(new Date(Date.now() + 3600000), 'HH:mm'),
-        date_deadline: format(new Date(Date.now() + 7 * 24 * 3600000), 'dd/MM/yyyy'),
-        date: format(new Date(), 'dd/MM/yyyy'),
-        local: '',
-        urgent: andamento.situacao_atual === 'EXIGÊNCIA',
-        important: true,
-        display_schedule: true,
-        folder: andamento.processo.servico || 'Geral',
-        guest_input: ''
-    });
+    const [error, setError] = useState<string | null>(null);
 
-    const validateForm = (): boolean => {
-        const newErrors: FormErrors = {};
+    // Form state
+    const [selectedUsers, setSelectedUsers] = useState<number[]>([]);
+    const [selectedTask, setSelectedTask] = useState<string>('');
+    const [taskComments, setTaskComments] = useState<string>('');
+    const [taskDate, setTaskDate] = useState<string>('');
+    const [taskDeadline, setTaskDeadline] = useState<string>('');
 
-        // Validar campos obrigatórios
-        if (!formData.from) {
-            newErrors.from = 'ID do usuário é obrigatório';
+    useEffect(() => {
+        if (isOpen && andamento) {
+            setError(null);
+            fetchData();
         }
+    }, [isOpen, andamento]);
 
-        if (formData.guests.length === 0) {
-            newErrors.guests = 'Adicione pelo menos um convidado';
-        }
-
-        if (!formData.tasks_id) {
-            newErrors.tasks_id = 'ID da tarefa é obrigatório';
-        }
-
-        // Validar formato das datas (DD/MM/YYYY)
-        const dateRegex = /^(0[1-9]|[12][0-9]|3[01])\/(0[1-9]|1[012])\/\d{4}$/;
-        if (!dateRegex.test(formData.start_date)) {
-            newErrors.start_date = 'Data inválida. Use o formato DD/MM/YYYY';
-        }
-
-        // Validar formato das horas (HH:MM)
-        const timeRegex = /^([01][0-9]|2[0-3]):[0-5][0-9]$/;
-        if (formData.start_time && !timeRegex.test(formData.start_time)) {
-            newErrors.start_time = 'Hora inválida. Use o formato HH:MM';
-        }
-
-        setErrors(newErrors);
-        return Object.keys(newErrors).length === 0;
-    };
-
-    const handleSubmit = async () => {
-        if (!validateForm()) {
-            toast.error('Por favor, corrija os erros no formulário');
-            return;
-        }
-
+    const fetchData = async () => {
+        setLoading(true);
         try {
-            setLoading(true);
-            const response = await axios.post(`/andamentos/${andamento.id}/adicionar-advbox`, formData);
+            console.log('Fetching data for andamento:', andamento);
             
-            if (response.data.success) {
-                toast.success(response.data.message);
-                onClose();
+            // Fetch settings (users and tasks) from the new PHP API
+            console.log('Fetching settings...');
+            const settingsResponse = await axios.get('/advbox_api.php?endpoint=settings');
+            console.log('Settings response:', settingsResponse.data);
+            
+            if (settingsResponse.data.success) {
+                setUsers(settingsResponse.data.users || []);
+                setTasks(settingsResponse.data.tasks || []);
+                console.log('Users loaded:', settingsResponse.data.users?.length || 0);
+                console.log('Tasks loaded:', settingsResponse.data.tasks?.length || 0);
             } else {
-                toast.error(response.data.error);
+                console.error('Settings fetch failed:', settingsResponse.data);
+                setError('Erro ao carregar configurações: ' + (settingsResponse.data.errors?.join(', ') || 'Erro desconhecido'));
+                setUsers([]);
+                setTasks([]);
+            }
+
+            // Fetch lawsuit by protocol number
+            if (andamento.processo?.protocolo) {
+                console.log('Fetching lawsuit for protocol:', andamento.processo.protocolo);
+                const lawsuitResponse = await axios.get(`/advbox_api.php?endpoint=lawsuits&protocol_number=${andamento.processo.protocolo}`);
+                console.log('Lawsuit response:', lawsuitResponse.data);
+                
+                if (lawsuitResponse.data.success) {
+                    setLawsuit(lawsuitResponse.data.data);
+                    console.log('Lawsuit found:', lawsuitResponse.data.data);
+                } else {
+                    console.warn('Processo não encontrado no AdvBox:', lawsuitResponse.data.error);
+                    setLawsuit(null);
+                }
             }
         } catch (error: any) {
-            toast.error(error.response?.data?.error || 'Erro ao adicionar no AdvBox');
+            console.error('Error fetching data:', error);
+            console.error('Error details:', error.response?.data);
+            setError(error.response?.data?.error || 'Erro ao carregar dados');
+            setUsers([]);
+            setTasks([]);
         } finally {
             setLoading(false);
         }
     };
 
-    const addGuest = () => {
-        if (formData.guest_input.trim()) {
-            const guestId = parseInt(formData.guest_input);
-            if (!isNaN(guestId) && !formData.guests.includes(guestId)) {
-                setFormData({
-                    ...formData,
-                    guests: [...formData.guests, guestId],
-                    guest_input: ''
-                });
-                // Limpar erro de guests quando adicionar um
-                if (errors.guests) {
-                    setErrors({ ...errors, guests: undefined });
+    const handleCreateTask = async () => {
+        console.log('handleCreateTask called');
+        console.log('lawsuit:', lawsuit);
+        console.log('selectedTask:', selectedTask);
+        console.log('selectedUsers:', selectedUsers);
+        
+        if (!lawsuit) {
+            console.error('Lawsuit not found');
+            toast.error('Processo não encontrado no AdvBox');
+            return;
+        }
+
+        if (!selectedTask || selectedUsers.length === 0) {
+            console.error('Missing task or users:', { selectedTask, selectedUsers });
+            toast.error('Selecione uma tarefa e pelo menos um usuário');
+            return;
+        }
+
+        // Formatar datas
+        const formatDate = (date: string) => {
+            if (!date) return '';
+            const [year, month, day] = date.split('-');
+            return `${day}/${month}/${year}`;
+        };
+
+        console.log('Starting task creation...');
+        setLoading(true);
+        try {
+            const taskData = {
+                from: selectedUsers[0].toString(),
+                guests: selectedUsers.map(String),
+                tasks_id: selectedTask,
+                lawsuits_id: lawsuit.id.toString(),
+                comments: taskComments || `Tarefa para o processo ${lawsuit.protocol_number}`,
+                start_date: formatDate(taskDate) || formatDate(new Date().toISOString().split('T')[0]),
+                start_time: '09:00',
+                end_date: formatDate(taskDate) || formatDate(new Date().toISOString().split('T')[0]),
+                end_time: '17:00',
+                date_deadline: formatDate(taskDeadline),
+                date: formatDate(new Date().toISOString().split('T')[0]),
+                local: '',
+                urgent: false,
+                important: false,
+                display_schedule: true,
+                folder: `Processo ${lawsuit.protocol_number}`,
+                protocol_number: lawsuit.protocol_number,
+                process_number: lawsuit.process_number
+            };
+
+            console.log('Task data to be sent:', taskData);
+
+            const response = await axios.post('/advbox_api.php?endpoint=posts', {
+                data: taskData
+            }, {
+                headers: {
+                    'Content-Type': 'application/json'
                 }
+            });
+
+            console.log('API Response:', response.data);
+
+            if (response.data.success) {
+                console.log('Task created successfully');
+                toast.success('Tarefa criada com sucesso no AdvBox');
+                onClose();
+            } else {
+                console.error('Task creation failed:', response.data);
+                toast.error('Erro ao criar tarefa no AdvBox: ' + response.data.error);
             }
+        } catch (error: any) {
+            console.error('Error creating task:', error);
+            console.error('Error details:', error.response?.data);
+            toast.error(error.response?.data?.error || 'Erro ao criar tarefa');
+        } finally {
+            console.log('Task creation finished');
+            setLoading(false);
         }
     };
 
-    const removeGuest = (guestId: number) => {
-        setFormData({
-            ...formData,
-            guests: formData.guests.filter(id => id !== guestId)
-        });
+    const handleCreateMovement = async () => {
+        if (!lawsuit) {
+            toast.error('Processo não encontrado no AdvBox');
+            return;
+        }
+
+        // Formatar datas
+        const formatDate = (date: string) => {
+            if (!date) return '';
+            const [year, month, day] = date.split('-');
+            return `${day}/${month}/${year}`;
+        };
+
+        console.log('Starting movement creation...');
+        setLoading(true);
+        try {
+            const movementData = {
+                lawsuit_id: lawsuit.id,
+                date: formatDate(taskDate) || formatDate(new Date().toISOString().split('T')[0]),
+                description: taskComments || `Movimento para o processo ${lawsuit.protocol_number}`,
+                type: 'MANUAL'
+            };
+
+            console.log('Movement data to be sent:', movementData);
+
+            const response = await axios.post('/advbox_api.php?endpoint=movement', {
+                data: movementData
+            }, {
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            console.log('API Response:', response.data);
+
+            if (response.data.success) {
+                console.log('Movement created successfully');
+                toast.success('Movimento criado com sucesso no AdvBox');
+                onClose();
+            } else {
+                console.error('Movement creation failed:', response.data);
+                toast.error('Erro ao criar movimento no AdvBox: ' + response.data.error);
+            }
+        } catch (error: any) {
+            console.error('Error creating movement:', error);
+            console.error('Error details:', error.response?.data);
+            toast.error(error.response?.data?.error || 'Erro ao criar movimento');
+        } finally {
+            console.log('Movement creation finished');
+            setLoading(false);
+        }
     };
+
+    // Se houver erro, mostrar tela de erro
+    if (error) {
+        return (
+            <Dialog open={isOpen} onOpenChange={onClose}>
+                <DialogContent>
+                    <div className="flex flex-col items-center justify-center gap-4 py-8">
+                        <AlertCircle className="h-12 w-12 text-red-500" />
+                        <div className="text-center">
+                            <p className="text-lg font-medium text-red-600">Erro de Conexão</p>
+                            <p className="text-sm text-muted-foreground">
+                                {error}
+                            </p>
+                            <div className="flex justify-center gap-4 mt-4">
+                                <Button 
+                                    onClick={() => {
+                                        setError(null);
+                                        fetchData();
+                                    }}
+                                >
+                                    Tentar Novamente
+                                </Button>
+                                <Button 
+                                    variant="outline"
+                                    onClick={onClose}
+                                >
+                                    Fechar
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
+        );
+    }
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="sm:max-w-[700px] max-h-[80vh] overflow-y-auto">
+            <DialogContent className="max-w-2xl">
                 <DialogHeader>
-                    <DialogTitle>Adicionar Tarefa no AdvBox</DialogTitle>
+                    <DialogTitle>Adicionar no AdvBox</DialogTitle>
                     <DialogDescription>
-                        Preencha os dados para criar uma nova tarefa no AdvBox
+                        Adicione uma tarefa ou movimento para o processo {andamento.processo?.protocolo}
                     </DialogDescription>
                 </DialogHeader>
 
-                <div className="grid gap-4 py-4">
-                    {/* Campos obrigatórios de identificação */}
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="grid gap-2">
-                            <Label htmlFor="from" className="flex items-center">
-                                ID do Usuário
-                                <span className="text-red-500 ml-1">*</span>
-                            </Label>
-                            <Input
-                                id="from"
-                                value={formData.from}
-                                onChange={(e) => {
-                                    setFormData({ ...formData, from: e.target.value });
-                                    if (errors.from) setErrors({ ...errors, from: undefined });
-                                }}
-                                placeholder="Ex: 12345"
-                                className={errors.from ? 'border-red-500' : ''}
-                            />
-                            {errors.from && <p className="text-sm text-red-500">{errors.from}</p>}
-                        </div>
-                        <div className="grid gap-2">
-                            <Label htmlFor="tasks_id" className="flex items-center">
-                                ID da Tarefa
-                                <span className="text-red-500 ml-1">*</span>
-                            </Label>
-                            <Input
-                                id="tasks_id"
-                                value={formData.tasks_id}
-                                onChange={(e) => {
-                                    setFormData({ ...formData, tasks_id: e.target.value });
-                                    if (errors.tasks_id) setErrors({ ...errors, tasks_id: undefined });
-                                }}
-                                placeholder="Ex: 98765"
-                                className={errors.tasks_id ? 'border-red-500' : ''}
-                            />
-                            {errors.tasks_id && <p className="text-sm text-red-500">{errors.tasks_id}</p>}
-                        </div>
+                {loading ? (
+                    <div className="flex justify-center items-center h-64">
+                        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                     </div>
+                ) : (
+                    <div className="space-y-4">
+                        {/* Processo Details */}
+                        <div className="grid grid-cols-2 gap-4 bg-muted/20 p-4 rounded-lg">
+                            <div>
+                                <div className="text-sm font-medium text-muted-foreground">Nome</div>
+                                <div>{andamento.processo?.nome}</div>
+                            </div>
+                            <div>
+                                <div className="text-sm font-medium text-muted-foreground">Protocolo</div>
+                                <div>{andamento.processo?.protocolo}</div>
+                            </div>
+                        </div>
 
-                    {/* Convidados (Obrigatório) */}
-                    <div className="grid gap-2">
-                        <Label className="flex items-center">
-                            Convidados
-                            <span className="text-red-500 ml-1">*</span>
-                        </Label>
-                        <div className="flex gap-2">
-                            <Input
-                                value={formData.guest_input}
-                                onChange={(e) => setFormData({ ...formData, guest_input: e.target.value })}
-                                placeholder="ID do convidado"
-                                type="number"
-                                className={errors.guests ? 'border-red-500' : ''}
+                        {/* Status do Processo no AdvBox */}
+                        <div className="p-3 rounded-lg border">
+                            <div className="text-sm font-medium text-muted-foreground mb-1">
+                                Status no AdvBox
+                            </div>
+                            {lawsuit ? (
+                                <div className="text-green-600 text-sm">
+                                    ✓ Processo encontrado (ID: {lawsuit.id})
+                                </div>
+                            ) : (
+                                <div className="text-orange-600 text-sm">
+                                    ⚠ Processo não encontrado no AdvBox
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Users Multiselect */}
+                        <div>
+                            <label className="flex items-center gap-2 mb-2 text-sm font-medium">
+                                <Users className="h-4 w-4" /> Usuários
+                            </label>
+                            <Select 
+                                value={selectedUsers.length > 0 ? selectedUsers[0].toString() : ''} 
+                                onValueChange={(value: string) => {
+                                    // Para simplificar, vamos usar apenas um usuário por enquanto
+                                    setSelectedUsers([parseInt(value)]);
+                                }}
+                                disabled={users.length === 0}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder={users.length === 0 ? "Nenhum usuário disponível" : "Selecione um usuário"} />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {users.length === 0 ? (
+                                        <div className="p-2 text-sm text-muted-foreground">
+                                            Não há usuários disponíveis
+                                        </div>
+                                    ) : (
+                                        users.map((user) => (
+                                            <SelectItem 
+                                                key={user.id} 
+                                                value={user.id.toString()}
+                                            >
+                                                {user.name}
+                                            </SelectItem>
+                                        ))
+                                    )}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        {/* Task or Movement Type */}
+                        <div>
+                            <label className="flex items-center gap-2 mb-2 text-sm font-medium">
+                                <FileText className="h-4 w-4" /> Tipo
+                            </label>
+                            <Select 
+                                value={selectedTask} 
+                                onValueChange={setSelectedTask}
+                                disabled={tasks.length === 0}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder={tasks.length === 0 ? "Nenhuma tarefa disponível" : "Selecione uma tarefa"} />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {tasks.length === 0 ? (
+                                        <div className="p-2 text-sm text-muted-foreground">
+                                            Não há tarefas disponíveis
+                                        </div>
+                                    ) : (
+                                        tasks.map((task) => (
+                                            <SelectItem 
+                                                key={task.id} 
+                                                value={task.id.toString()}
+                                            >
+                                                {task.name}
+                                            </SelectItem>
+                                        ))
+                                    )}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        {/* Comments */}
+                        <div>
+                            <label className="mb-2 block text-sm font-medium">Comentários</label>
+                            <Input 
+                                placeholder="Adicione comentários sobre a tarefa ou movimento"
+                                value={taskComments}
+                                onChange={(e) => setTaskComments(e.target.value)}
                             />
-                            <Button type="button" variant="outline" onClick={addGuest}>
-                                Adicionar
+                        </div>
+
+                        {/* Dates */}
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="flex items-center gap-2 mb-2 text-sm font-medium">
+                                    <Calendar className="h-4 w-4" /> Data
+                                </label>
+                                <Input 
+                                    type="date" 
+                                    value={taskDate}
+                                    onChange={(e) => setTaskDate(e.target.value)}
+                                />
+                            </div>
+                            <div>
+                                <label className="flex items-center gap-2 mb-2 text-sm font-medium">
+                                    <Calendar className="h-4 w-4" /> Prazo
+                                </label>
+                                <Input 
+                                    type="date" 
+                                    value={taskDeadline}
+                                    onChange={(e) => setTaskDeadline(e.target.value)}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex justify-end gap-2">
+                            <Button 
+                                variant="outline" 
+                                onClick={onClose}
+                                disabled={loading}
+                            >
+                                Cancelar
+                            </Button>
+                            <Button 
+                                onClick={handleCreateTask}
+                                disabled={loading || !lawsuit}
+                                title={!lawsuit ? "Processo não encontrado no AdvBox" : ""}
+                            >
+                                {loading ? (
+                                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                ) : null}
+                                Criar Tarefa
+                            </Button>
+                            <Button 
+                                variant="secondary"
+                                onClick={handleCreateMovement}
+                                disabled={loading || !lawsuit}
+                                title={!lawsuit ? "Processo não encontrado no AdvBox" : ""}
+                            >
+                                {loading ? (
+                                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                ) : null}
+                                Criar Movimento
                             </Button>
                         </div>
-                        {errors.guests && <p className="text-sm text-red-500">{errors.guests}</p>}
-                        {formData.guests.length > 0 && (
-                            <div className="flex flex-wrap gap-2 mt-2">
-                                {formData.guests.map((guestId) => (
-                                    <div key={guestId} className="flex items-center gap-1 bg-gray-100 px-2 py-1 rounded">
-                                        <span>{guestId}</span>
-                                        <Button
-                                            type="button"
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => removeGuest(guestId)}
-                                            className="h-4 w-4 p-0"
-                                        >
-                                            ×
-                                        </Button>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
                     </div>
-
-                    {/* Comentários */}
-                    <div className="grid gap-2">
-                        <Label htmlFor="comments">Comentários</Label>
-                        <Textarea
-                            id="comments"
-                            value={formData.comments}
-                            onChange={(e) => setFormData({ ...formData, comments: e.target.value })}
-                            rows={6}
-                        />
-                    </div>
-
-                    {/* Datas e horários */}
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="grid gap-2">
-                            <Label htmlFor="start_date" className="flex items-center">
-                                Data Início
-                                <span className="text-red-500 ml-1">*</span>
-                            </Label>
-                            <Input
-                                id="start_date"
-                                type="text"
-                                value={formData.start_date}
-                                onChange={(e) => {
-                                    setFormData({ ...formData, start_date: e.target.value });
-                                    if (errors.start_date) setErrors({ ...errors, start_date: undefined });
-                                }}
-                                placeholder="DD/MM/YYYY"
-                                className={errors.start_date ? 'border-red-500' : ''}
-                            />
-                            {errors.start_date && <p className="text-sm text-red-500">{errors.start_date}</p>}
-                        </div>
-                        <div className="grid gap-2">
-                            <Label htmlFor="start_time">Hora Início</Label>
-                            <Input
-                                id="start_time"
-                                type="text"
-                                value={formData.start_time}
-                                onChange={(e) => {
-                                    setFormData({ ...formData, start_time: e.target.value });
-                                    if (errors.start_time) setErrors({ ...errors, start_time: undefined });
-                                }}
-                                placeholder="HH:MM"
-                                className={errors.start_time ? 'border-red-500' : ''}
-                            />
-                            {errors.start_time && <p className="text-sm text-red-500">{errors.start_time}</p>}
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="grid gap-2">
-                            <Label htmlFor="end_date">Data Fim</Label>
-                            <Input
-                                id="end_date"
-                                type="text"
-                                value={formData.end_date}
-                                onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
-                                placeholder="DD/MM/YYYY"
-                            />
-                        </div>
-                        <div className="grid gap-2">
-                            <Label htmlFor="end_time">Hora Fim</Label>
-                            <Input
-                                id="end_time"
-                                type="text"
-                                value={formData.end_time}
-                                onChange={(e) => setFormData({ ...formData, end_time: e.target.value })}
-                                placeholder="HH:MM"
-                            />
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="grid gap-2">
-                            <Label htmlFor="date_deadline">Data Limite</Label>
-                            <Input
-                                id="date_deadline"
-                                type="text"
-                                value={formData.date_deadline}
-                                onChange={(e) => setFormData({ ...formData, date_deadline: e.target.value })}
-                                placeholder="DD/MM/YYYY"
-                            />
-                        </div>
-                        <div className="grid gap-2">
-                            <Label htmlFor="date">Data</Label>
-                            <Input
-                                id="date"
-                                type="text"
-                                value={formData.date}
-                                onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                                placeholder="DD/MM/YYYY"
-                            />
-                        </div>
-                    </div>
-
-                    {/* Local e Pasta */}
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="grid gap-2">
-                            <Label htmlFor="local">Local</Label>
-                            <Input
-                                id="local"
-                                value={formData.local}
-                                onChange={(e) => setFormData({ ...formData, local: e.target.value })}
-                                placeholder="Ex: Sala de reuniões - 3º andar"
-                            />
-                        </div>
-                        <div className="grid gap-2">
-                            <Label htmlFor="folder">Pasta</Label>
-                            <Input
-                                id="folder"
-                                value={formData.folder}
-                                onChange={(e) => setFormData({ ...formData, folder: e.target.value })}
-                                placeholder="Ex: Pasta 123"
-                            />
-                        </div>
-                    </div>
-
-                    {/* Switches */}
-                    <div className="flex items-center space-x-6">
-                        <div className="flex items-center space-x-2">
-                            <Switch
-                                id="urgent"
-                                checked={formData.urgent}
-                                onCheckedChange={(checked) => setFormData({ ...formData, urgent: checked })}
-                            />
-                            <Label htmlFor="urgent">Urgente</Label>
-                        </div>
-
-                        <div className="flex items-center space-x-2">
-                            <Switch
-                                id="important"
-                                checked={formData.important}
-                                onCheckedChange={(checked) => setFormData({ ...formData, important: checked })}
-                            />
-                            <Label htmlFor="important">Importante</Label>
-                        </div>
-
-                        <div className="flex items-center space-x-2">
-                            <Switch
-                                id="display_schedule"
-                                checked={formData.display_schedule}
-                                onCheckedChange={(checked) => setFormData({ ...formData, display_schedule: checked })}
-                            />
-                            <Label htmlFor="display_schedule">Exibir no Calendário</Label>
-                        </div>
-                    </div>
-                </div>
-
-                <DialogFooter>
-                    <Button variant="outline" onClick={onClose}>
-                        Cancelar
-                    </Button>
-                    <Button onClick={handleSubmit} disabled={loading}>
-                        {loading ? 'Criando...' : 'Criar Tarefa'}
-                    </Button>
-                </DialogFooter>
+                )}
             </DialogContent>
         </Dialog>
     );
-} 
+}

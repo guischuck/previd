@@ -328,28 +328,24 @@ export default function Dashboard(allProps: DashboardProps) {
     const quickActions = [
         {
             title: 'Novo Caso',
-            description: 'Criar um novo caso jurídico',
             icon: Plus,
             href: '/cases/create',
             color: 'bg-blue-500 hover:bg-blue-600',
         },
         {
             title: 'Coletas',
-            description: 'Gerenciar coletas de documentos',
             icon: Upload,
             href: '/coletas',
             color: 'bg-green-500 hover:bg-green-600',
         },
         {
             title: 'Gerar Petição',
-            description: 'Criar petição com IA',
             icon: BookOpen,
             href: '/petitions/create',
             color: 'bg-purple-500 hover:bg-purple-600',
         },
         {
             title: 'AI Chat',
-            description: 'Conversar com assistente jurídico',
             icon: MessageSquare,
             href: '/chat',
             color: 'bg-orange-500 hover:bg-orange-600',
@@ -377,18 +373,18 @@ export default function Dashboard(allProps: DashboardProps) {
                 {/* Stats Cards */}
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                     {statCards.map((stat) => (
-                        <Card key={stat.title} className="border-border bg-card">
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium text-card-foreground">{stat.title}</CardTitle>
-                                <stat.icon className={`h-4 w-4 ${stat.color.replace('bg-', 'text-')}`} />
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-2xl font-bold text-card-foreground">{stat.value}</div>
-                                <Link href={stat.href} className="text-xs text-muted-foreground hover:underline">
-                                    Ver detalhes →
-                                </Link>
-                            </CardContent>
-                        </Card>
+                        <Link key={stat.title} href={stat.href}>
+                            <Card className="border-border bg-card cursor-pointer transition-all duration-200 hover:shadow-md">
+                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                    <CardTitle className="text-sm font-medium text-card-foreground">{stat.title}</CardTitle>
+                                    <stat.icon className={`h-4 w-4 ${stat.color.replace('bg-', 'text-')}`} />
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="text-2xl font-bold text-card-foreground">{stat.value}</div>
+                                    <p className="text-xs text-muted-foreground mt-1">Ver detalhes ➜</p>
+                                </CardContent>
+                            </Card>
+                        </Link>
                     ))}
                 </div>
 
@@ -397,24 +393,18 @@ export default function Dashboard(allProps: DashboardProps) {
                     <h2 className="mb-4 text-xl font-semibold text-foreground">Ações Rápidas</h2>
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                         {quickActions.map((action) => (
-                            <Card key={action.title} className="border-border bg-card transition-shadow hover:shadow-md">
-                                <CardHeader>
-                                    <div className="flex items-center space-x-2">
-                                        <div className={`rounded-lg p-2 ${action.color}`}>
-                                            <action.icon className="h-4 w-4 text-white" />
+                            <Link key={action.title} href={action.href}>
+                                <Card className="border-border bg-card cursor-pointer transition-all duration-200 hover:shadow-md">
+                                    <CardHeader>
+                                        <div className="flex items-center space-x-2">
+                                            <div className={`rounded-lg p-2 ${action.color}`}>
+                                                <action.icon className="h-4 w-4 text-white" />
+                                            </div>
+                                            <CardTitle className="text-sm text-card-foreground">{action.title}</CardTitle>
                                         </div>
-                                        <CardTitle className="text-sm text-card-foreground">{action.title}</CardTitle>
-                                    </div>
-                                    <CardDescription className="text-xs text-muted-foreground">{action.description}</CardDescription>
-                                </CardHeader>
-                                <CardContent>
-                                    <Link href={action.href}>
-                                        <Button variant="outline" size="sm" className="w-full">
-                                            Acessar
-                                        </Button>
-                                    </Link>
-                                </CardContent>
-                            </Card>
+                                    </CardHeader>
+                                </Card>
+                            </Link>
                         ))}
                     </div>
                 </div>
@@ -423,49 +413,57 @@ export default function Dashboard(allProps: DashboardProps) {
                 <div>
                     <h2 className="mb-4 text-xl font-semibold text-foreground">Processos INSS</h2>
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                        <Card className="border-border bg-card cursor-pointer transition-all duration-200 hover:shadow-md" onClick={() => window.location.href = '/inss-processes'}>
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium text-card-foreground">Total de Processos</CardTitle>
-                                <Briefcase className="h-4 w-4 text-blue-500" />
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-2xl font-bold text-card-foreground">{inssStats?.total_processos || 0}</div>
-                                <p className="text-xs text-muted-foreground mt-1">Ver todos ➜</p>
-                            </CardContent>
-                        </Card>
+                        <Link href="/inss-processes">
+                            <Card className="border-border bg-card cursor-pointer transition-all duration-200 hover:shadow-md">
+                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                    <CardTitle className="text-sm font-medium text-card-foreground">Total de Processos</CardTitle>
+                                    <Briefcase className="h-4 w-4 text-blue-500" />
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="text-2xl font-bold text-card-foreground">{inssStats?.total_processos || 0}</div>
+                                    <p className="text-xs text-muted-foreground mt-1">Ver todos ➜</p>
+                                </CardContent>
+                            </Card>
+                        </Link>
                         
-                        <Card className="border-border bg-card cursor-pointer transition-all duration-200 hover:shadow-md" onClick={() => window.location.href = '/inss-processes?status=Em Análise'}>
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium text-card-foreground">Em Análise</CardTitle>
-                                <FileText className="h-4 w-4 text-blue-500" />
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-2xl font-bold text-card-foreground">{inssStats?.processos_ativos || 0}</div>
-                                <p className="text-xs text-muted-foreground mt-1">Ver todos ➜</p>
-                            </CardContent>
-                        </Card>
+                        <Link href="/inss-processes?status=Em Análise">
+                            <Card className="border-border bg-card cursor-pointer transition-all duration-200 hover:shadow-md">
+                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                    <CardTitle className="text-sm font-medium text-card-foreground">Em Análise</CardTitle>
+                                    <FileText className="h-4 w-4 text-blue-500" />
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="text-2xl font-bold text-card-foreground">{inssStats?.processos_ativos || 0}</div>
+                                    <p className="text-xs text-muted-foreground mt-1">Ver todos ➜</p>
+                                </CardContent>
+                            </Card>
+                        </Link>
                         
-                        <Card className="border-border bg-card cursor-pointer transition-all duration-200 hover:shadow-md" onClick={() => window.location.href = '/inss-processes?status=Exigência'}>
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium text-card-foreground">Em Exigência</CardTitle>
-                                <AlertTriangle className="h-4 w-4 text-orange-500" />
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-2xl font-bold text-card-foreground">{inssStats?.processos_exigencia || 0}</div>
-                                <p className="text-xs text-muted-foreground mt-1">Ver todos ➜</p>
-                            </CardContent>
-                        </Card>
+                        <Link href="/inss-processes?status=Exigência">
+                            <Card className="border-border bg-card cursor-pointer transition-all duration-200 hover:shadow-md">
+                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                    <CardTitle className="text-sm font-medium text-card-foreground">Em Exigência</CardTitle>
+                                    <AlertTriangle className="h-4 w-4 text-orange-500" />
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="text-2xl font-bold text-card-foreground">{inssStats?.processos_exigencia || 0}</div>
+                                    <p className="text-xs text-muted-foreground mt-1">Ver todos ➜</p>
+                                </CardContent>
+                            </Card>
+                        </Link>
                         
-                        <Card className="border-border bg-card cursor-pointer transition-all duration-200 hover:shadow-md" onClick={() => window.location.href = '/inss-processes?status=Concluída'}>
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium text-card-foreground">Concluídos</CardTitle>
-                                <CheckCircle className="h-4 w-4 text-green-500" />
-                        </CardHeader>
-                        <CardContent>
-                                <div className="text-2xl font-bold text-card-foreground">{inssStats?.processos_concluidos || 0}</div>
-                                <p className="text-xs text-muted-foreground mt-1">Ver todos ➜</p>
-                        </CardContent>
-                    </Card>
+                        <Link href="/inss-processes?status=Concluída">
+                            <Card className="border-border bg-card cursor-pointer transition-all duration-200 hover:shadow-md">
+                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                    <CardTitle className="text-sm font-medium text-card-foreground">Concluídos</CardTitle>
+                                    <CheckCircle className="h-4 w-4 text-green-500" />
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="text-2xl font-bold text-card-foreground">{inssStats?.processos_concluidos || 0}</div>
+                                    <p className="text-xs text-muted-foreground mt-1">Ver todos ➜</p>
+                                </CardContent>
+                            </Card>
+                        </Link>
                     </div>
                 </div>
             </div>

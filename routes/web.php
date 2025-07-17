@@ -20,6 +20,10 @@ Route::get('/', function () {
     return Inertia::render('welcome');
 })->name('home');
 
+Route::get('/usuarios', [\App\Http\Controllers\UsuariosController::class, 'index'])
+    ->middleware(['auth', 'verified'])
+    ->name('usuarios.index');
+
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', [CaseController::class, 'dashboard'])->middleware('ensure.user.company')->name('dashboard');
     Route::get('chat', function () {
@@ -34,8 +38,29 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/', [\App\Http\Controllers\AndamentoController::class, 'index'])->name('index');
         Route::patch('/{andamento}/marcar-visto', [\App\Http\Controllers\AndamentoController::class, 'marcarVisto'])->name('marcar-visto');
         Route::post('/marcar-todos-vistos', [\App\Http\Controllers\AndamentoController::class, 'marcarTodosVistos'])->name('marcar-todos-vistos');
-        Route::post('/andamentos/{andamento}/adicionar-advbox', [\App\Http\Controllers\AndamentoController::class, 'adicionarAdvbox'])->name('adicionar-advbox');
+        Route::post('/{andamento}/adicionar-advbox', [\App\Http\Controllers\AndamentoController::class, 'adicionarAdvbox'])->name('adicionar-advbox');
         Route::get('/{protocolo}/despacho', [\App\Http\Controllers\AndamentoController::class, 'getDespacho'])->name('get-despacho');
+        
+        // Rotas para buscar dados da Advbox
+        Route::get('/advbox/usuarios', [\App\Http\Controllers\AndamentoController::class, 'getAdvboxUsers'])->name('advbox-users');
+        Route::get('/advbox/tarefas', [\App\Http\Controllers\AndamentoController::class, 'getAdvboxTasks'])->name('advbox-tasks');
+        Route::get('/advbox/processo/{protocolo}', [\App\Http\Controllers\AndamentoController::class, 'getAdvboxProcesso'])->name('advbox-processo');
+        
+        // Rota de teste temporária para debug
+        Route::get('/advbox/debug', function() {
+            $company = \App\Models\Company::find(2);
+            $service = new \App\Services\AdvboxService($company->advbox_api_key);
+            
+            $settings = $service->getSettings();
+            $users = $service->getUsers();
+            $tasks = $service->getTasks();
+            
+            return response()->json([
+                'settings' => $settings,
+                'users' => $users,
+                'tasks' => $tasks
+            ]);
+        })->name('advbox-debug');
     });
 
     // Rotas do Sistema Jurídico
@@ -131,10 +156,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
         
         // Rota para salvar anotações
         Route::patch('/cases/{case}/notes', [CaseController::class, 'updateNotes'])->name('api.cases.update-notes');
-        
-        // Rota para buscar tarefas do caso
-        Route::get('/cases/{case}/tasks', [CaseController::class, 'getCaseTasks'])->name('api.cases.tasks');
     });
+    
+    // Rota para buscar tarefas do caso
+    Route::get('/cases/{case}/tasks', [CaseController::class, 'getCaseTasks'])
+        ->middleware('auth')
+        ->name('cases.tasks');
 
     // Petitions routes
     Route::resource('petitions', PetitionController::class);

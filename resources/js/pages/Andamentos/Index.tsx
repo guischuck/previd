@@ -1,7 +1,7 @@
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router } from '@inertiajs/react';
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -117,13 +117,28 @@ export default function AndamentosIndex({
     const [searchTerm, setSearchTerm] = useState(filters.search || '');
     const [selectedNovaSituacao, setSelectedNovaSituacao] = useState(filters.nova_situacao || 'all');
     const [selectedSituacaoAnterior, setSelectedSituacaoAnterior] = useState(filters.situacao_anterior || 'all');
-    const [selectedVisualizacao, setSelectedVisualizacao] = useState(filters.visualizacao || 'all');
+    const [selectedVisualizacao, setSelectedVisualizacao] = useState(filters.visualizacao || 'nao_visto');
     const [selectedPeriodo, setSelectedPeriodo] = useState(filters.periodo || 'all');
     const [selectedAndamento, setSelectedAndamento] = useState<any>(null);
     const [isAdvboxModalOpen, setIsAdvboxModalOpen] = useState(false);
     const [isDespachoModalOpen, setIsDespachoModalOpen] = useState(false);
     const [loadingDespacho, setLoadingDespacho] = useState(false);
     const [despachoData, setDespachoData] = useState<any>(null);
+
+    useEffect(() => {
+        // Se o modal do Advbox estiver aberto, garantir que o modal de despacho esteja fechado
+        if (isAdvboxModalOpen) {
+            setIsDespachoModalOpen(false);
+            setDespachoData(null);
+        }
+    }, [isAdvboxModalOpen]);
+    
+    // Limpar dados do despacho quando o modal for fechado
+    useEffect(() => {
+        if (!isDespachoModalOpen) {
+            setDespachoData(null);
+        }
+    }, [isDespachoModalOpen]);
 
     const handleFilter = () => {
         router.get('/andamentos', {
@@ -239,26 +254,35 @@ export default function AndamentosIndex({
     };
 
     const handleAddToAdvbox = (andamento: any) => {
+        // Fechar modal de despacho primeiro
+        setIsDespachoModalOpen(false);
+        setDespachoData(null);
+        
+        // Abrir modal do Advbox
         setSelectedAndamento(andamento);
         setIsAdvboxModalOpen(true);
     };
 
     const handleVerDespacho = async (andamento: HistoricoSituacao) => {
-        try {
-            setLoadingDespacho(true);
-            setIsDespachoModalOpen(true);
-            setSelectedAndamento(andamento); // Armazena o andamento selecionado
+        // Fechar modal do Advbox primeiro
+        setIsAdvboxModalOpen(false);
+        
+        // Limpar dados do despacho anterior antes de carregar o novo
+        setDespachoData(null);
+        setSelectedAndamento(andamento);
+        setIsDespachoModalOpen(true);
+        setLoadingDespacho(true);
 
-            // Se já temos o despacho no andamento, use-o
+        try {
             if (andamento.despacho) {
                 setDespachoData(andamento.despacho);
                 return;
             }
 
-            // Caso contrário, busque do servidor
             const response = await axios.get(`/andamentos/${andamento.processo.protocolo}/despacho`);
             setDespachoData(response.data.despacho);
         } catch (error: any) {
+            console.error('Erro ao carregar despacho:', error);
             toast.error(error.response?.data?.error || 'Erro ao carregar despacho');
         } finally {
             setLoadingDespacho(false);
@@ -267,6 +291,12 @@ export default function AndamentosIndex({
 
     // Função para abrir o processo no INSS
     const handleVerNoInss = (protocolo: string) => {
+        // Fechar todos os modais
+        setIsAdvboxModalOpen(false);
+        setIsDespachoModalOpen(false);
+        setDespachoData(null);
+        
+        // Abrir link do INSS
         window.open(`https://atendimento.inss.gov.br/tarefas/detalhar_tarefa/${protocolo}`, '_blank');
     };
 
@@ -563,7 +593,7 @@ export default function AndamentosIndex({
                                                     <div className="flex gap-2 justify-center">
                                                         {!andamento.visto && (
                                                             <Button
-                                                                onClick={() => markAsViewed(andamento.id)}
+                                                                onClick={e => { e.stopPropagation(); markAsViewed(andamento.id); }}
                                                                 size="sm"
                                                                 variant="outline"
                                                                 className="h-8 w-8 p-0"
@@ -583,12 +613,13 @@ export default function AndamentosIndex({
                                                                 href={`https://atendimento.inss.gov.br/tarefas/detalhar_tarefa/${andamento.processo?.protocolo}`}
                                                                 target="_blank"
                                                                 rel="noopener noreferrer"
+                                                                onClick={e => e.stopPropagation()}
                                                             >
                                                                 <ExternalLink className="h-4 w-4 text-blue-600" />
                                                             </a>
                                                         </Button>
                                                         <Button
-                                                            onClick={() => handleVerDespacho(andamento)}
+                                                            onClick={e => { e.stopPropagation(); handleVerDespacho(andamento); }}
                                                             size="sm"
                                                             variant="outline"
                                                             className="h-8 w-8 p-0"
@@ -597,7 +628,7 @@ export default function AndamentosIndex({
                                                             <Eye className="h-4 w-4 text-purple-600" />
                                                         </Button>
                                                         <Button
-                                                            onClick={() => handleAddToAdvbox(andamento)}
+                                                            onClick={e => { e.stopPropagation(); handleAddToAdvbox(andamento); }}
                                                             size="sm"
                                                             variant="outline"
                                                             className="h-8 w-8 p-0"
@@ -697,7 +728,7 @@ export default function AndamentosIndex({
                                                 
                                                 <div className="flex gap-2 pt-2">
                                                     <Button
-                                                        onClick={() => handleVerDespacho(andamento)}
+                                                        onClick={e => { e.stopPropagation(); handleVerDespacho(andamento); }}
                                                         size="sm"
                                                         variant="outline"
                                                         className="h-7 w-7 p-0"
@@ -706,7 +737,7 @@ export default function AndamentosIndex({
                                                         <Eye className="h-3 w-3 text-purple-600" />
                                                     </Button>
                                                     <Button
-                                                        onClick={() => handleAddToAdvbox(andamento)}
+                                                        onClick={e => { e.stopPropagation(); handleAddToAdvbox(andamento); }}
                                                         size="sm"
                                                         variant="outline"
                                                         className="h-7 w-7 p-0"
@@ -842,28 +873,28 @@ export default function AndamentosIndex({
                             <div className="flex justify-end gap-2">
                                 {/* Botão Marcar como Visto */}
                                 {selectedAndamento && !selectedAndamento.visto && (
-                                    <Button
-                                        variant="outline"
-                                        onClick={() => {
-                                            markAsViewed(selectedAndamento.id);
-                                            setIsDespachoModalOpen(false);
-                                        }}
-                                        className="h-8 w-8 p-0"
-                                        title="Marcar como Visto"
-                                    >
-                                        <CheckCircle className="h-4 w-4 text-green-600" />
-                                    </Button>
-                                )}
+    <Button
+        variant="outline"
+        onClick={() => {
+            markAsViewed(selectedAndamento.id);
+            setIsDespachoModalOpen(false);
+        }}
+        className="h-8 w-8 p-0"
+        title="Marcar como Visto"
+    >
+        <CheckCircle className="h-4 w-4 text-green-600" />
+    </Button>
+)}
 
                                 {/* Botão Ver no INSS */}
                                 <Button
-                                    variant="outline"
-                                    onClick={() => handleVerNoInss(despachoData.protocolo)}
-                                    className="h-8 w-8 p-0"
-                                    title="Ver no INSS"
-                                >
-                                    <ExternalLink className="h-4 w-4 text-blue-600" />
-                                </Button>
+    variant="outline"
+    onClick={() => handleVerNoInss(despachoData.protocolo)}
+    className="h-8 w-8 p-0"
+    title="Ver no INSS"
+>
+    <ExternalLink className="h-4 w-4 text-blue-600" />
+</Button>
 
                                 {/* Botão Importar para Advbox */}
                                 {selectedAndamento && (

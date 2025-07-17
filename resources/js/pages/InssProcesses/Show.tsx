@@ -53,6 +53,25 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 
 export default function ProcessoShow({ processo }: ProcessoShowProps) {
+    const normalizeSituacao = (situacao: string): string => {
+        if (!situacao) return 'N/A';
+        
+        const normalized = situacao.toUpperCase();
+        switch (normalized) {
+            case 'EM ANÁLISE':
+            case 'EM ANALISE':
+                return 'EM ANÁLISE';
+            case 'EXIGÊNCIA':
+            case 'EXIGENCIA':
+                return 'EXIGÊNCIA';
+            case 'CONCLUÍDA':
+            case 'CONCLUIDA':
+                return 'CONCLUÍDA';
+            default:
+                return normalized;
+        }
+    };
+
     const getStatusColor = (status: string) => {
         const normalizedStatus = status.toLowerCase();
         
@@ -127,7 +146,7 @@ export default function ProcessoShow({ processo }: ProcessoShowProps) {
                                             variant="outline" 
                                             className={`mt-1 ${getStatusColor(processo.situacao)}`}
                                         >
-                                            {processo.situacao}
+                                            {normalizeSituacao(processo.situacao)}
                                         </Badge>
                                     </div>
                                     <div>
@@ -136,7 +155,7 @@ export default function ProcessoShow({ processo }: ProcessoShowProps) {
                                     </div>
                                     <div>
                                         <p className="text-sm font-medium text-gray-600">Status Anterior</p>
-                                        <p>{processo.situacao_anterior || 'N/A'}</p>
+                                        <p>{normalizeSituacao(processo.situacao_anterior || 'N/A')}</p>
                                     </div>
                                 </div>
                             </CardContent>
@@ -190,7 +209,7 @@ export default function ProcessoShow({ processo }: ProcessoShowProps) {
                                                         </TableCell>
                                                         <TableCell>
                                                             <Badge variant="outline" className="bg-gray-100 text-gray-800">
-                                                                {historico.situacao_anterior || 'N/A'}
+                                                                {normalizeSituacao(historico.situacao_anterior || 'N/A')}
                                                             </Badge>
                                                         </TableCell>
                                                         <TableCell>
@@ -198,7 +217,7 @@ export default function ProcessoShow({ processo }: ProcessoShowProps) {
                                                                 variant="outline" 
                                                                 className={getStatusColor(historico.situacao_atual)}
                                                             >
-                                                                {historico.situacao_atual}
+                                                                {normalizeSituacao(historico.situacao_atual)}
                                                             </Badge>
                                                         </TableCell>
                                                     </TableRow>

@@ -1,12 +1,15 @@
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link } from '@inertiajs/react';
-import { ArrowLeft, Building, ChevronDown, ChevronUp, Copy, FileText } from 'lucide-react';
+import { ArrowLeft, Building, ChevronDown, ChevronUp, Copy, FileText, Plus } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import axios from 'axios';
 
 interface EmploymentRelationship {
     id: number;
@@ -21,6 +24,7 @@ interface EmploymentRelationship {
     cargo?: string;
     documentos?: string;
     observacoes?: string;
+    status_empresa?: string;
 }
 
 interface Case {
@@ -44,6 +48,17 @@ interface EditableTextProps {
     value: string;
     onChange: (val: string) => void;
     placeholder?: string;
+}
+
+interface NewVinculoForm {
+    employer_name: string;
+    employer_cnpj: string;
+    start_date: string;
+    end_date: string;
+    cargo: string;
+    documentos: string;
+    observacoes: string;
+    status_empresa: string;
 }
 
 // Função para formatar datas no formato DD/MM/YYYY
@@ -187,6 +202,17 @@ export default function Vinculos({ case: case_ }: VinculosProps) {
     const [expanded, setExpanded] = useState<number | null>(null);
     const [modalOpen, setModalOpen] = useState(false);
     const [modalVinculo, setModalVinculo] = useState<EmploymentRelationship | null>(null);
+    const [newVinculoModalOpen, setNewVinculoModalOpen] = useState(false);
+    const [newVinculoForm, setNewVinculoForm] = useState<NewVinculoForm>({
+        employer_name: '',
+        employer_cnpj: '',
+        start_date: '',
+        end_date: '',
+        cargo: '',
+        documentos: '',
+        observacoes: '',
+        status_empresa: ''
+    });
     const [tentativasData, setTentativasData] = useState<{ [key: string]: any }>({});
 
     // Carregar dados das tentativas existentes
@@ -228,7 +254,7 @@ export default function Vinculos({ case: case_ }: VinculosProps) {
         setEmploymentRelationships(updatedRelationships);
     };
 
-    const handleFieldChange = (idx: number, field: 'cargo' | 'documentos' | 'observacoes', value: string) => {
+    const handleFieldChange = (idx: number, field: 'cargo' | 'documentos' | 'observacoes' | 'status_empresa', value: string) => {
         const updatedRelationships = [...employmentRelationships];
         updatedRelationships[idx] = {
             ...updatedRelationships[idx],
@@ -303,10 +329,38 @@ export default function Vinculos({ case: case_ }: VinculosProps) {
         }
     };
 
-    const removeVinculo = (idx: number) => {
-        const updated = [...employmentRelationships];
-        updated.splice(idx, 1);
-        setEmploymentRelationships(updated);
+    const removeVinculo = async (idx: number) => {
+        try {
+            const vinculo = employmentRelationships[idx];
+            if (!vinculo || !vinculo.id) {
+                console.error('Vínculo inválido ou sem ID');
+                return;
+            }
+            
+            console.log('Removendo vínculo:', vinculo);
+            
+            const response = await axios.delete(`/api/employment-relationships/${vinculo.id}`);
+            console.log('Resposta da API ao remover vínculo:', response.data);
+            
+            if (response.data.success) {
+                const updated = [...employmentRelationships];
+                updated.splice(idx, 1);
+                setEmploymentRelationships(updated);
+                
+                // Atualizar status do caso se necessário
+                if (response.data.case_status) {
+                    setCase(prev => ({
+                        ...prev,
+                        status: response.data.case_status,
+                        collection_progress: response.data.case_progress
+                    }));
+                }
+            } else {
+                console.error('Erro ao remover vínculo:', response.data);
+            }
+        } catch (error) {
+            console.error('Erro ao remover vínculo:', error);
+        }
     };
 
     const openModal = (vinculo: EmploymentRelationship) => {
@@ -315,31 +369,85 @@ export default function Vinculos({ case: case_ }: VinculosProps) {
     };
     const closeModal = () => setModalOpen(false);
 
-    const saveField = async (idx: number, field: string, value: string) => {
-        // Atualiza localmente
-        const updated = [...employmentRelationships];
-        updated[idx] = { ...updated[idx], [field]: value };
-        setEmploymentRelationships(updated);
-
-        // Salva no backend
+    const handleNewVinculoSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
         try {
-            const response = await fetch(`/api/employment-relationships/${updated[idx].id}`, {
-                method: 'PATCH',
+            console.log('Enviando novo vínculo:', newVinculoForm);
+            const newRelationship = {
+                case_id: case_.id,
+                employer_name: newVinculoForm.employer_name,
+                employer_cnpj: newVinculoForm.employer_cnpj,
+                start_date: newVinculoForm.start_date,
+                end_date: newVinculoForm.end_date,
+                cargo: newVinculoForm.cargo,
+                documentos: newVinculoForm.documentos,
+                observacoes: newVinculoForm.observacoes,
+                status_empresa: newVinculoForm.status_empresa,
+                is_active: true
+            };
+            
+            const response = await axios.post('/api/employment-relationships', newRelationship, {
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
-                },
-                body: JSON.stringify({ [field]: value }),
+                }
             });
 
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+            if (response.data.data) {
+                setEmploymentRelationships(prev => [...prev, response.data.data]);
+                setNewVinculoModalOpen(false);
+                setNewVinculoForm({
+                    employer_name: '',
+                    employer_cnpj: '',
+                    start_date: '',
+                    end_date: '',
+                    cargo: '',
+                    documentos: '',
+                    observacoes: '',
+                    status_empresa: ''
+                });
             }
+        } catch (error) {
+            console.error('Erro ao criar vínculo:', error);
+            console.error('Dados enviados:', newVinculoForm);
+            if (axios.isAxiosError(error)) {
+                console.error('Resposta do servidor:', error.response?.data);
+            }
+            alert('Erro ao criar novo vínculo. Tente novamente.');
+        }
+    };
 
-            const result = await response.json();
-            console.log('Campo salvo com sucesso:', result);
+    const saveField = async (idx: number, field: string, value: any) => {
+        console.log('Salvando campo:', { field, value });
+        const relationship = employmentRelationships[idx];
+        try {
+            // Atualizar estado local imediatamente
+            const updatedRelationships = [...employmentRelationships];
+            updatedRelationships[idx] = {
+                ...updatedRelationships[idx],
+                [field]: value
+            };
+            setEmploymentRelationships(updatedRelationships);
+
+            // Enviar para o backend
+            const response = await axios.patch(
+                `/api/employment-relationships/${relationship.id}`,
+                { [field]: value },
+                {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                    }
+                }
+            );
+
+            console.log('Campo salvo com sucesso:', response.data);
         } catch (error) {
             console.error('Erro ao salvar campo:', error);
+            console.error('Dados enviados:', { field, value });
+            if (axios.isAxiosError(error)) {
+                console.error('Resposta do servidor:', error.response?.data);
+            }
             alert(`Erro ao salvar ${field}. Tente novamente.`);
         }
     };
@@ -436,6 +544,10 @@ Eduardo Koetz - OAB/SC 42.934`;
                                     Voltar ao Caso
                                 </Button>
                             </Link>
+                            <Button variant="default" size="sm" onClick={() => setNewVinculoModalOpen(true)}>
+                                <Plus className="mr-2 h-4 w-4" />
+                                Novo Vínculo
+                            </Button>
                         </div>
                         <h1 className="mt-4 text-3xl font-bold">Vínculos Empregatícios</h1>
                         <p className="text-muted-foreground">
@@ -486,7 +598,7 @@ Eduardo Koetz - OAB/SC 42.934`;
                                 <TableHeader>
                                     <TableRow>
                                         <TableHead>Empregador</TableHead>
-                                        <TableHead>CNPJ</TableHead>
+                                        <TableHead>Status Empresa</TableHead>
                                         <TableHead>Data Início</TableHead>
                                         <TableHead>Data Fim</TableHead>
                                         <TableHead>Cargo</TableHead>
@@ -499,9 +611,16 @@ Eduardo Koetz - OAB/SC 42.934`;
                                         <TableRow key={relationship.id}>
                                             <TableCell>{relationship.employer_name}</TableCell>
                                             <TableCell>
-                                                <code className="rounded bg-muted px-2 py-1 text-sm text-foreground">
-                                                    {formatCNPJ(relationship.employer_cnpj)}
-                                                </code>
+                                                <select
+                                                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                                                    value={relationship.status_empresa || ''}
+                                                    onChange={(e) => saveField(idx, 'status_empresa', e.target.value)}
+                                                >
+                                                    <option value="">Selecione...</option>
+                                                    <option value="Ativa">Ativa</option>
+                                                    <option value="Baixada">Baixada</option>
+                                                    <option value="Inapta">Inapta</option>
+                                                </select>
                                             </TableCell>
                                             <TableCell>
                                                 <EditableDate value={relationship.start_date} onChange={(val) => saveField(idx, 'start_date', val)} />
@@ -523,12 +642,18 @@ Eduardo Koetz - OAB/SC 42.934`;
                                                     placeholder="Documentos"
                                                 />
                                             </TableCell>
-                                            <TableCell>
-                                                <EditableText
-                                                    value={relationship.observacoes || ''}
-                                                    onChange={(val) => saveField(idx, 'observacoes', val)}
-                                                    placeholder="Observações"
-                                                />
+                                            <TableCell className="relative">
+                                                <div className="flex items-center gap-2">
+                                                    <EditableText
+                                                        value={relationship.observacoes || ''}
+                                                        onChange={(val) => saveField(idx, 'observacoes', val)}
+                                                        placeholder="Observações"
+                                                    />
+                                                    <div
+                                                        className={`h-3 w-3 rounded-full ${!relationship.is_active ? 'bg-green-500' : 'bg-yellow-500'}`}
+                                                        title={!relationship.is_active ? 'Concluído' : 'Pendente'}
+                                                    />
+                                                </div>
                                             </TableCell>
                                         </TableRow>
                                     ))}
@@ -801,6 +926,113 @@ Eduardo Koetz - OAB/SC 42.934`;
                     </DialogContent>
                 </Dialog>
             </div>
+
+            {/* Modal de Novo Vínculo */}
+            <Dialog open={newVinculoModalOpen} onOpenChange={setNewVinculoModalOpen}>
+                <DialogContent className="sm:max-w-[600px]">
+                    <form onSubmit={handleNewVinculoSubmit}>
+                        <DialogHeader>
+                            <DialogTitle>Novo Vínculo Empregatício</DialogTitle>
+                            <DialogDescription>
+                                Preencha os dados do novo vínculo empregatício.
+                            </DialogDescription>
+                        </DialogHeader>
+
+                        <div className="grid gap-4 py-4">
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="employer_name">Nome do Empregador</Label>
+                                <Input
+                                    id="employer_name"
+                                    value={newVinculoForm.employer_name}
+                                    onChange={(e) => setNewVinculoForm(prev => ({ ...prev, employer_name: e.target.value }))}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="employer_cnpj">CNPJ</Label>
+                                <Input
+                                    id="employer_cnpj"
+                                    value={newVinculoForm.employer_cnpj}
+                                    onChange={(e) => setNewVinculoForm(prev => ({ ...prev, employer_cnpj: e.target.value }))}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="start_date">Data Início</Label>
+                                <Input
+                                    id="start_date"
+                                    type="date"
+                                    value={newVinculoForm.start_date}
+                                    onChange={(e) => setNewVinculoForm(prev => ({ ...prev, start_date: e.target.value }))}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="end_date">Data Fim</Label>
+                                <Input
+                                    id="end_date"
+                                    type="date"
+                                    value={newVinculoForm.end_date}
+                                    onChange={(e) => setNewVinculoForm(prev => ({ ...prev, end_date: e.target.value }))}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="cargo">Cargo</Label>
+                            <Input
+                                id="cargo"
+                                value={newVinculoForm.cargo}
+                                onChange={(e) => setNewVinculoForm(prev => ({ ...prev, cargo: e.target.value }))}
+                            />
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="status_empresa">Status da Empresa</Label>
+                            <select
+                                id="status_empresa"
+                                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                                value={newVinculoForm.status_empresa}
+                                onChange={(e) => setNewVinculoForm(prev => ({ ...prev, status_empresa: e.target.value }))}
+                            >
+                                <option value="">Selecione...</option>
+                                <option value="Ativa">Ativa</option>
+                                <option value="Baixada">Baixada</option>
+                                <option value="Inapta">Inapta</option>
+                            </select>
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="documentos">Documentos</Label>
+                            <Input
+                                id="documentos"
+                                value={newVinculoForm.documentos}
+                                onChange={(e) => setNewVinculoForm(prev => ({ ...prev, documentos: e.target.value }))}
+                            />
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="observacoes">Observações</Label>
+                            <Input
+                                id="observacoes"
+                                value={newVinculoForm.observacoes}
+                                onChange={(e) => setNewVinculoForm(prev => ({ ...prev, observacoes: e.target.value }))}
+                            />
+                        </div>
+                    </div>
+
+                    <DialogFooter>
+                        <Button type="button" variant="outline" onClick={() => setNewVinculoModalOpen(false)}>
+                            Cancelar
+                        </Button>
+                        <Button type="submit">
+                            Salvar
+                        </Button>
+                    </DialogFooter>
+                    </form>
+                </DialogContent>
+            </Dialog>
         </AppLayout>
     );
 }

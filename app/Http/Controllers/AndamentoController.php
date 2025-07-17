@@ -60,13 +60,11 @@ class AndamentoController extends Controller
             }
             
             // Filtro de visualização (visto/não visto)
-            if ($request->filled('visualizacao')) {
-                $visualizacao = $request->get('visualizacao');
-                if ($visualizacao === 'visto') {
-                    $query->where('visto', true);
-                } elseif ($visualizacao === 'nao_visto') {
-                    $query->where('visto', false);
-                }
+            $visualizacao = $request->get('visualizacao', 'nao_visto'); // Padrão para não vistos
+            if ($visualizacao === 'visto') {
+                $query->where('visto', true);
+            } elseif ($visualizacao === 'nao_visto') {
+                $query->where('visto', false);
             }
             
             // Filtro de período
@@ -304,9 +302,29 @@ class AndamentoController extends Controller
         }
     }
 
-    public function adicionarAdvbox(Request $request, Andamento $andamento)
+    public function adicionarAdvbox(Request $request, $andamentoId)
     {
         try {
+            // Validar campos obrigatórios
+            $request->validate([
+                'from' => 'required|string',
+                'guests' => 'required|array|min:1',
+                'tasks_id' => 'required|string',
+                'comments' => 'nullable|string',
+                'start_date' => 'nullable|string',
+                'start_time' => 'nullable|string',
+                'end_date' => 'nullable|string',
+                'end_time' => 'nullable|string',
+                'date_deadline' => 'nullable|string',
+                'local' => 'nullable|string',
+                'urgent' => 'nullable|boolean',
+                'important' => 'nullable|boolean',
+                'display_schedule' => 'nullable|boolean',
+            ]);
+
+            // Buscar o andamento
+            $andamento = HistoricoSituacao::with('processo')->findOrFail($andamentoId);
+
             // Verificar se a integração está configurada
             $company = Company::find(2);
             if (!$company || !$company->advbox_integration_enabled || !$company->advbox_api_key) {
@@ -321,8 +339,11 @@ class AndamentoController extends Controller
 
             $advboxService = new AdvboxService($company->advbox_api_key);
 
-            // Usar a nova função que busca o processo pelo protocolo e cria a tarefa
-            $response = $advboxService->createTaskByProtocol($protocolNumber, [
+            // Preparar dados da tarefa
+            $taskData = [
+                'from' => $request->from,
+                'guests' => $request->guests,
+                'tasks_id' => $request->tasks_id,
                 'comments' => $request->comments,
                 'start_date' => $request->start_date,
                 'start_time' => $request->start_time,
@@ -333,8 +354,10 @@ class AndamentoController extends Controller
                 'urgent' => $request->urgent ?? false,
                 'important' => $request->important ?? false,
                 'display_schedule' => $request->display_schedule ?? true,
-                'folder' => $request->folder,
-            ]);
+            ];
+
+            // Usar a função que busca o processo pelo protocolo e cria a tarefa
+            $response = $advboxService->createTaskByProtocol($protocolNumber, $taskData);
 
             if ($response['success']) {
                 return response()->json([
@@ -347,9 +370,10 @@ class AndamentoController extends Controller
             return response()->json([
                 'error' => $response['error'] ?? 'Erro ao adicionar tarefa no AdvBox'
             ], 400);
+
         } catch (\Exception $e) {
             \Log::error('Erro ao adicionar tarefa no AdvBox', [
-                'message' => $e->getMessage(),
+                'error' => $e->getMessage(),
                 'protocol' => $andamento->processo->protocolo ?? 'N/A',
                 'andamento_id' => $andamento->id,
                 'request_data' => $request->all()
@@ -357,6 +381,109 @@ class AndamentoController extends Controller
 
             return response()->json([
                 'error' => 'Erro ao adicionar tarefa no AdvBox: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function getAdvboxUsers()
+    {
+        try {
+            // Verificar se a integração está configurada
+            $company = Company::find(2);
+            if (!$company || !$company->advbox_integration_enabled || !$company->advbox_api_key) {
+                return response()->json(['error' => 'Integração com AdvBox não está configurada'], 400);
+            }
+
+            $advboxService = new AdvboxService($company->advbox_api_key);
+            $response = $advboxService->getUsers();
+
+            if ($response['success']) {
+                return response()->json([
+                    'success' => true,
+                    'data' => $response['data']
+                ]);
+            }
+
+            return response()->json([
+                'error' => $response['error'] ?? 'Erro ao buscar usuários no AdvBox'
+            ], 400);
+
+        } catch (\Exception $e) {
+            \Log::error('Erro ao buscar usuários no AdvBox', [
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'error' => 'Erro ao buscar usuários no AdvBox: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function getAdvboxTasks()
+    {
+        try {
+            // Verificar se a integração está configurada
+            $company = Company::find(2);
+            if (!$company || !$company->advbox_integration_enabled || !$company->advbox_api_key) {
+                return response()->json(['error' => 'Integração com AdvBox não está configurada'], 400);
+            }
+
+            $advboxService = new AdvboxService($company->advbox_api_key);
+            $response = $advboxService->getTasks();
+
+            if ($response['success']) {
+                return response()->json([
+                    'success' => true,
+                    'data' => $response['data']
+                ]);
+            }
+
+            return response()->json([
+                'error' => $response['error'] ?? 'Erro ao buscar tarefas no AdvBox'
+            ], 400);
+
+        } catch (\Exception $e) {
+            \Log::error('Erro ao buscar tarefas no AdvBox', [
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'error' => 'Erro ao buscar tarefas no AdvBox: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function getAdvboxProcesso($protocolo)
+    {
+        try {
+            // Verificar se a integração está configurada
+            $company = Company::find(2);
+            if (!$company || !$company->advbox_integration_enabled || !$company->advbox_api_key) {
+                return response()->json(['error' => 'Integração com AdvBox não está configurada'], 400);
+            }
+
+            $advboxService = new AdvboxService($company->advbox_api_key);
+            $response = $advboxService->searchLawsuit($protocolo);
+
+            if ($response['success']) {
+                return response()->json([
+                    'success' => true,
+                    'data' => $response['data']
+                ]);
+            }
+
+            return response()->json([
+                'error' => $response['error'] ?? 'Erro ao buscar processo no AdvBox'
+            ], 400);
+
+        } catch (\Exception $e) {
+            \Log::error('Erro ao buscar processo no AdvBox', [
+                'protocolo' => $protocolo,
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'error' => 'Erro ao buscar processo no AdvBox: ' . $e->getMessage()
             ], 500);
         }
     }

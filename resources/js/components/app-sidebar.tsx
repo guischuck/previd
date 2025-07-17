@@ -98,12 +98,7 @@ export function AppSidebar() {
             title: 'Workflows',
             href: '/tasks',
             icon: GitBranch,
-        },
-        {
-            title: 'Features',
-            href: '/features',
-            icon: Star,
-        },
+        }
     ];
 
     // Escolher navegação baseada no tipo de usuário

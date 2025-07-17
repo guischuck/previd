@@ -167,52 +167,59 @@ export default function Coletas({ cards, tab, search, resultados }: ColetasProps
                 {/* Resultados */}
                 <Card>
                     <CardContent className="py-8">
-                        {resultados && resultados.length > 0 ? (
-                            <div className="space-y-4">
-                                {activeTab === 'clientes' &&
-                                    resultados.map((cliente: any) => (
-                                        <div key={cliente.id} className="flex items-center justify-between rounded-lg border p-4">
-                                            <div>
-                                                <div className="text-lg font-medium">{cliente.client_name}</div>
-                                                <div className="text-sm text-muted-foreground">CPF: {cliente.client_cpf}</div>
-                                                <div className="text-xs text-muted-foreground">
-                                                    Vínculos pendentes: {cliente.employment_relationships?.filter((v: any) => !v.collected_at).length}
-                                                </div>
-                                            </div>
-                                            <Link href={`/cases/${cliente.id}/vinculos`}>
-                                                <Button variant="outline">Ver Vínculos</Button>
-                                            </Link>
-                                        </div>
-                                    ))}
-                                {activeTab !== 'clientes' &&
-                                    resultados.map((vinculo: any) => {
-                                        const cliente = vinculo.legalCase || vinculo.legal_case;
-                                        return (
-                                            <div key={vinculo.id} className="flex items-center justify-between rounded-lg border p-4">
-                                                <div>
-                                                    <div className="text-lg font-medium">{vinculo.employer_name || vinculo.position}</div>
-                                                    <div className="text-sm text-muted-foreground">Cliente: {cliente?.client_name || '-'}</div>
-                                                    <div className="text-xs text-muted-foreground">
-                                                        Status: {vinculo.collected_at ? 'Concluído' : 'Pendente'}
-                                                    </div>
-                                                </div>
-                                                {cliente && (
-                                                    <Link href={`/cases/${cliente.id}/vinculos`}>
-                                                        <Button variant="outline">Ver Vínculos</Button>
-                                                    </Link>
-                                                )}
-                                            </div>
-                                        );
-                                    })}
+    {resultados && resultados.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 justify-center">
+            {activeTab === 'clientes' &&
+                resultados.map((cliente: any) => (
+                    <div
+                        key={cliente.id}
+                        className="flex flex-col justify-between rounded-xl border shadow-lg bg-background/90 p-6 transition-transform hover:scale-[1.02] hover:shadow-xl min-w-0"
+                    >
+                        <div className="flex-1 mb-4">
+                            <div className="text-xl font-bold text-primary mb-1 truncate">{cliente.client_name}</div>
+                            <div className="text-sm text-muted-foreground mb-1">CPF: {cliente.client_cpf}</div>
+                            <div className="text-xs text-muted-foreground">Vínculos pendentes: {cliente.employment_relationships?.filter((v: any) => !v.collected_at).length}</div>
+                        </div>
+                        <div className="flex justify-end">
+                            <Link href={`/cases/${cliente.id}/vinculos`}>
+                                <Button variant="outline" className="text-xs">Ver Vínculos</Button>
+                            </Link>
+                        </div>
+                    </div>
+                ))}
+            {activeTab !== 'clientes' &&
+                resultados.map((vinculo: any) => {
+                    const cliente = vinculo.legalCase || vinculo.legal_case;
+                    return (
+                        <div
+                            key={vinculo.id}
+                            className="flex flex-col justify-between rounded-xl border shadow-lg bg-background/90 p-6 transition-transform hover:scale-[1.02] hover:shadow-xl min-w-0"
+                        >
+                            <div className="flex-1 mb-4">
+                                <div className="text-xl font-bold text-primary mb-1 truncate">{vinculo.employer_name || vinculo.position}</div>
+                                <div className="text-sm text-muted-foreground mb-1">Cliente: {cliente?.client_name || '-'}</div>
+                                <div className="text-xs text-muted-foreground">Status: {vinculo.collected_at ? 'Concluído' : 'Pendente'}</div>
                             </div>
-                        ) : (
-                            <div className="flex flex-col items-center justify-center py-12">
-                                <Search className="mb-4 h-12 w-12 text-muted-foreground" />
-                                <h3 className="mb-2 text-lg font-medium">Central de Controle de Coletas</h3>
-                                <p className="mb-4 text-muted-foreground">Use os campos de busca acima para encontrar informações específicas.</p>
+                            <div className="flex justify-end">
+                                {cliente && (
+                                    <Link href={`/cases/${cliente.id}/vinculos`}>
+                                        <Button variant="outline" className="text-xs">Ver Vínculos</Button>
+                                    </Link>
+                                )}
                             </div>
-                        )}
-                    </CardContent>
+                        </div>
+                    );
+                })}
+        </div>
+    ) : (
+        <div className="flex flex-col items-center justify-center py-12">
+            <Search className="mb-4 h-12 w-12 text-muted-foreground" />
+            <h3 className="mb-2 text-lg font-medium">Nenhum resultado encontrado</h3>
+            <p className="mb-4 text-muted-foreground">Tente refinar sua busca ou alterar os filtros/abas acima.</p>
+        </div>
+    )}
+</CardContent>
+
                 </Card>
             </div>
         </AppLayout>

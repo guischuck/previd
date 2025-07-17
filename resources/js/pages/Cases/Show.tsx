@@ -174,18 +174,30 @@ export default function Show({ case: case_, users, benefitTypes }: ShowProps) {
         return new Date(dateString).toLocaleDateString('pt-BR');
     };
 
-    // Carregar documentos do caso e tarefas
+    // Carregar documentos do caso
     useEffect(() => {
         loadDocuments();
-        loadTasks();
     }, []);
 
-    // Recarregar tarefas quando o tipo de benefício mudar
+    // Carregar tarefas quando o componente montar ou quando o tipo de benefício mudar
     useEffect(() => {
-        if (data.benefit_type) {
+        // Verifica se há um tipo de benefício definido
+        if (case_.benefit_type) {
+            console.log('Carregando tarefas para o benefício:', case_.benefit_type);
+            loadTasks();
+        } else {
+            console.log('Nenhum tipo de benefício definido. Aguardando seleção...');
+            setTasks([]);
+        }
+    }, [case_.benefit_type]);
+    
+    // Carregar tarefas quando o componente for montado
+    useEffect(() => {
+        if (case_.benefit_type) {
+            console.log('Carregando tarefas iniciais para o benefício:', case_.benefit_type);
             loadTasks();
         }
-    }, [data.benefit_type]);
+    }, []); // Executa apenas uma vez quando o componente é montado
 
     const loadDocuments = async () => {
         try {
@@ -211,42 +223,51 @@ export default function Show({ case: case_, users, benefitTypes }: ShowProps) {
     };
 
     const loadTasks = async () => {
+        console.log('Iniciando carregamento de tarefas para o caso:', case_.id);
         setLoadingTasks(true);
         try {
-            const response = await fetch(`/api/cases/${case_.id}/tasks`, {
+            const response = await fetch(`/cases/${case_.id}/tasks`, {
                 method: 'GET',
                 headers: {
                     'Accept': 'application/json',
-                    'Content-Type': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest'
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
                 },
-                credentials: 'include'
+                credentials: 'same-origin'
             });
             
+            console.log('Resposta da API de tarefas - Status:', response.status);
+            
             if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+                const errorText = await response.text();
+                console.error('Erro na resposta da API de tarefas:', errorText);
+                throw new Error(`HTTP error! status: ${response.status}, response: ${errorText}`);
             }
             
             const result = await response.json();
+            console.log('Dados retornados pela API de tarefas:', result);
             
-            if (result.success && result.tasks) {
-                const formattedTasks = result.tasks.map((task: any) => ({
-                    id: task.id.toString(),
-                    title: task.title,
-                    description: task.description || '',
-                    completed: task.status === 'completed',
-                    priority: task.priority as 'high' | 'medium' | 'low',
-                    required_documents: task.required_documents || [],
-                    order: task.order || 0,
-                    status: task.status,
-                    due_date: task.due_date,
-                    assigned_to: task.assigned_to,
-                }));
+            if (result.success && Array.isArray(result.tasks)) {
+                const formattedTasks = result.tasks.map((task: any) => {
+                    console.log('Processando tarefa:', task);
+                    return {
+                        id: task.id.toString(),
+                        title: task.title,
+                        description: task.description || '',
+                        completed: task.status === 'completed',
+                        priority: (task.priority || 'medium') as 'high' | 'medium' | 'low',
+                        required_documents: task.required_documents || [],
+                        order: task.order || 0,
+                        status: task.status || 'pending',
+                        due_date: task.due_date,
+                        assigned_to: task.assigned_to,
+                    };
+                });
                 
+                console.log(`✅ ${formattedTasks.length} tarefas formatadas:`, formattedTasks);
                 setTasks(formattedTasks);
-                console.log(`✅ ${formattedTasks.length} tarefas carregadas com sucesso`);
             } else {
-                console.error('Erro na resposta da API de tarefas:', result.error || 'Resposta inválida');
+                console.error('Formato inesperado na resposta da API de tarefas:', result);
                 setTasks([]);
             }
         } catch (error) {
@@ -607,31 +628,49 @@ export default function Show({ case: case_, users, benefitTypes }: ShowProps) {
                                         <Select
                                             value={data.benefit_type || ''}
                                             onValueChange={async (value) => {
-                                                setData('benefit_type', value || '');
-                                                
-                                                if (!value) return;
-                                                
                                                 console.log('Tipo de benefício selecionado:', value);
                                                 setLoadingTasks(true);
                                                 
-                                                // Salva o tipo de benefício - o backend criará/recriará as tarefas automaticamente
                                                 try {
-                                                    await patch(`/cases/${case_.id}`, {
-                                                        preserveScroll: true,
-                                                        onSuccess: () => {
-                                                            console.log('Tipo de benefício salvo, carregando tarefas...');
-                                                            // Recarrega as tarefas após salvar
-                                                            setTimeout(() => {
-                                                                loadTasks();
-                                                            }, 1000); // Aguarda 1s para garantir que o backend processou
+                                                    const formData = new FormData();
+                                                    // Permite valor vazio para limpar o tipo de benefício
+                                                    formData.append('benefit_type', value || '');
+                                                    formData.append('_method', 'PATCH');
+                                                    
+                                                    // Adiciona o token CSRF ao cabeçalho
+                                                    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+                                                    
+                                                    console.log('Enviando requisição com benefit_type:', value || '(vazio)');
+                                                    
+                                                    const response = await fetch(`/cases/${case_.id}`, {
+                                                        method: 'POST',
+                                                        headers: {
+                                                            'X-CSRF-TOKEN': csrfToken,
+                                                            'Accept': 'application/json',
+                                                            'X-Requested-With': 'XMLHttpRequest',
+                                                            'X-Inertia': 'true'
                                                         },
-                                                        onError: (errors) => {
-                                                            console.error('Erro ao atualizar caso:', errors);
-                                                            setLoadingTasks(false);
-                                                        }
+                                                        body: formData
                                                     });
+
+                                                    if (!response.ok) {
+                                                        const errorText = await response.text();
+                                                        console.error('Erro na resposta do servidor:', response.status, errorText);
+                                                        throw new Error(`Erro ao atualizar o caso: ${response.status} ${errorText}`);
+                                                    }
+
+                                                    const result = await response.json();
+                                                    console.log('Resposta do servidor:', result);
+                                                    
+                                                    // Atualiza o estado local com o novo valor
+                                                    setData('benefit_type', value || '');
+                                                    
+                                                    // Recarrega as tarefas após salvar
+                                                    setTimeout(() => {
+                                                        loadTasks();
+                                                    }, 500);
                                                 } catch (error) {
-                                                    console.error('Erro ao salvar tipo de benefício:', error);
+                                                    console.error('Erro ao atualizar o caso:', error);
                                                     setLoadingTasks(false);
                                                 }
                                             }}
